@@ -5,6 +5,7 @@ This module handles the main Telegram bot logic for Match-Chess.
 import logging
 import os
 import re
+import sys
 from logging.handlers import RotatingFileHandler
 
 from dotenv import load_dotenv
@@ -17,8 +18,6 @@ from telegram.ext import (
     MessageHandler,
     filters,
 )
-
-
 
 # Logger config >-------------------------------
 
@@ -33,7 +32,9 @@ console_handler = logging.StreamHandler()
 console_handler.setLevel(logging.WARNING)
 console_handler.setFormatter(formatter)
 
-file_handler = RotatingFileHandler(filename="log/bot.log", maxBytes=2000000, backupCount=5)
+file_handler = RotatingFileHandler(
+    filename="log/bot.log", maxBytes=2000000, backupCount=5
+)
 file_handler.setLevel(logging.INFO)
 file_handler.setFormatter(formatter)
 
@@ -47,20 +48,21 @@ logger.info("Loading Token...")
 
 if not load_dotenv():
     logger.critical("No '.env' file found")
-    exit(1)
+    sys.exit(1)
 
-TOKEN = os.getenv("DEBUG-TOKEN")
+TOKEN = os.getenv("TELEGRAM-TOKEN")
 if TOKEN is None:
     logger.critical("No TOKEN found in environment variables")
-    exit(1)
+    sys.exit(1)
 
 REGEX = "^[0-9]{8,10}:[a-zA-Z0-9_-]{35}$"
 if re.fullmatch(REGEX, TOKEN) is None:
     logger.critical("Invalid token formatting")
-    exit(1)
+    sys.exit(1)
 
 
 # Bot Commands >------------------------------------
+
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """function to be activated whenever the "/start" command is sent"""
@@ -89,11 +91,11 @@ async def caps(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await context.bot.send_message(chat_id=update.effective_chat.id, text=text_caps)
 
 
-# Bot Configuration >------------------------------------- 
+# Bot Configuration >-------------------------------------
 
 if __name__ == "__main__":
     logger.info("Starting...")
-    
+
     application = ApplicationBuilder().token(TOKEN).build()
 
     start_handler = CommandHandler("start", start)
@@ -108,13 +110,9 @@ if __name__ == "__main__":
         application.run_polling()
     except InvalidToken:
         logger.critical("The token was rejected by the server")
-        exit(1)
+        sys.exit(1)
     except NetworkError:
         logger.critical("Network error found")
-        exit(1)
-    except Exception as e:
-        logger.critical(e)
-        exit(1)
+        sys.exit(1)
 
     logger.info("The bot is Up and Running")
-
