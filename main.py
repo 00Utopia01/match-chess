@@ -44,22 +44,38 @@ logger.addHandler(file_handler)
 
 # Token setup >--------------------------------
 
+
+def get_token() -> str:
+    """get token from .env file"""
+
+    if not load_dotenv():
+        logger.critical("No '.env' file found")
+        return ""
+
+    token = os.getenv("TELEGRAM-TOKEN")
+    if token is None:
+        logger.critical("No TOKEN found in environment variables")
+        return ""
+
+    return token
+
+
+def check_token(token: str) -> bool:
+    """chek token format"""
+
+    regex_const = "^[0-9]{8,10}:[a-zA-Z0-9_-]{35}$"
+
+    if re.fullmatch(regex_const, token) is None:
+        logger.critical("Invalid token formatting")
+        return False
+
+    return True
+
+
 logger.info("Loading Token...")
-
-if not load_dotenv():
-    logger.critical("No '.env' file found")
+TOKEN = get_token()
+if TOKEN == "" or not check_token(TOKEN):
     sys.exit(1)
-
-TOKEN = os.getenv("TELEGRAM-TOKEN")
-if TOKEN is None:
-    logger.critical("No TOKEN found in environment variables")
-    sys.exit(1)
-
-REGEX = "^[0-9]{8,10}:[a-zA-Z0-9_-]{35}$"
-if re.fullmatch(REGEX, TOKEN) is None:
-    logger.critical("Invalid token formatting")
-    sys.exit(1)
-
 
 # Bot Commands >------------------------------------
 
@@ -114,5 +130,3 @@ if __name__ == "__main__":
     except NetworkError:
         logger.critical("Network error found")
         sys.exit(1)
-
-    logger.info("The bot is Up and Running")
