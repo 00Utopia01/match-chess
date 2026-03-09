@@ -4,6 +4,7 @@ This module handles the main Telegram bot logic for Match-Chess.
 
 import logging
 import os
+from logging.handlers import RotatingFileHandler
 
 from dotenv import load_dotenv
 from telegram import Update
@@ -15,13 +16,30 @@ from telegram.ext import (
     filters,
 )
 
-load_dotenv()
-token = os.getenv("TELEGRAM-TOKEN")
-if token is None:
-    raise ValueError("No TOKEN found in environment variables")
+# Logger config >-------------------------------
 
 LOGGING_PATTERN = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-logging.basicConfig(format=LOGGING_PATTERN, level=logging.INFO)
+formatter = logging.Formatter(LOGGING_PATTERN)
+
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
+
+console_handler = logging.StreamHandler()
+console_handler.setLevel(logging.INFO)
+console_handler.setFormatter(formatter)
+
+file_handler = RotatingFileHandler(filename="bot.log", maxBytes=2000000, backupCount=5)
+file_handler.setLevel(logging.DEBUG)
+file_handler.setFormatter(formatter)
+
+logger.addHandler(console_handler)
+logger.addHandler(file_handler)
+
+
+load_dotenv()
+TOKEN = os.getenv("TELEGRAM-TOKEN")
+if TOKEN is None:
+    raise ValueError("No TOKEN found in environment variables")
 
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -52,8 +70,8 @@ async def caps(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 if __name__ == "__main__":
-    # create an application with a bot token
-    application = ApplicationBuilder().token(token).build()
+    # create an application with a bot TOKEN
+    application = ApplicationBuilder().token(TOKEN).build()
 
     # tells the created application to listen to the "/start" command
     start_handler = CommandHandler("start", start)
