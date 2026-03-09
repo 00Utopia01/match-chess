@@ -18,8 +18,9 @@ from telegram.ext import (
 
 # Logger config >-------------------------------
 
-LOGGING_PATTERN = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-formatter = logging.Formatter(LOGGING_PATTERN)
+LOGGING_PATTERN = "%(asctime)s | %(filename)s > %(levelname)s: %(message)s"
+LOGGING_DATEFORMAT = "%d/%m/%Y %H:%M:%S"
+formatter = logging.Formatter(LOGGING_PATTERN, LOGGING_DATEFORMAT)
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
@@ -28,18 +29,26 @@ console_handler = logging.StreamHandler()
 console_handler.setLevel(logging.INFO)
 console_handler.setFormatter(formatter)
 
-file_handler = RotatingFileHandler(filename="bot.log", maxBytes=2000000, backupCount=5)
+file_handler = RotatingFileHandler(filename="log/bot.log", maxBytes=2000000, backupCount=5)
 file_handler.setLevel(logging.DEBUG)
 file_handler.setFormatter(formatter)
 
 logger.addHandler(console_handler)
 logger.addHandler(file_handler)
 
+# Token setup >--------------------------------
 
-load_dotenv()
+logger.debug("Loading Token...")
+
+if not load_dotenv():
+    logger.critical("No '.env' file found")
+    exit(1)
+
 TOKEN = os.getenv("TELEGRAM-TOKEN")
 if TOKEN is None:
-    raise ValueError("No TOKEN found in environment variables")
+    logger.critical("No TOKEN found in environment variables")
+    exit(1)
+
 
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
