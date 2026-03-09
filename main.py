@@ -4,10 +4,12 @@ This module handles the main Telegram bot logic for Match-Chess.
 
 import logging
 import os
+import re
 from logging.handlers import RotatingFileHandler
 
 from dotenv import load_dotenv
 from telegram import Update
+from telegram.error import InvalidToken, NetworkError
 from telegram.ext import (
     ApplicationBuilder,
     CommandHandler,
@@ -15,6 +17,8 @@ from telegram.ext import (
     MessageHandler,
     filters,
 )
+
+
 
 # Logger config >-------------------------------
 
@@ -26,30 +30,37 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
 console_handler = logging.StreamHandler()
-console_handler.setLevel(logging.INFO)
+console_handler.setLevel(logging.WARNING)
 console_handler.setFormatter(formatter)
 
 file_handler = RotatingFileHandler(filename="log/bot.log", maxBytes=2000000, backupCount=5)
-file_handler.setLevel(logging.DEBUG)
+file_handler.setLevel(logging.INFO)
 file_handler.setFormatter(formatter)
 
 logger.addHandler(console_handler)
 logger.addHandler(file_handler)
 
+
 # Token setup >--------------------------------
 
-logger.debug("Loading Token...")
+logger.info("Loading Token...")
 
 if not load_dotenv():
     logger.critical("No '.env' file found")
     exit(1)
 
-TOKEN = os.getenv("TELEGRAM-TOKEN")
+TOKEN = os.getenv("DEBUG-TOKEN")
 if TOKEN is None:
     logger.critical("No TOKEN found in environment variables")
     exit(1)
 
+REGEX = "^[0-9]{8,10}:[a-zA-Z0-9_-]{35}$"
+if re.fullmatch(REGEX, TOKEN) is None:
+    logger.critical("Invalid token formatting")
+    exit(1)
 
+
+# Bot Commands >------------------------------------
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """function to be activated whenever the "/start" command is sent"""
@@ -78,11 +89,13 @@ async def caps(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await context.bot.send_message(chat_id=update.effective_chat.id, text=text_caps)
 
 
+# Bot Configuration >------------------------------------- 
+
 if __name__ == "__main__":
-    # create an application with a bot TOKEN
+    logger.info("Starting...")
+    
     application = ApplicationBuilder().token(TOKEN).build()
 
-    # tells the created application to listen to the "/start" command
     start_handler = CommandHandler("start", start)
     echo_handler = MessageHandler(filters.TEXT & (~filters.COMMAND), echo)
     caps_handler = CommandHandler("caps", caps)
@@ -91,4 +104,17 @@ if __name__ == "__main__":
     application.add_handler(echo_handler)
     application.add_handler(caps_handler)
 
-    application.run_polling()
+    try:
+        application.run_polling()
+    except InvalidToken:
+        logger.critical("The token was rejected by the server")
+        exit(1)
+    except NetworkError:
+        logger.critical("Network error found")
+        exit(1)
+    except Exception as e:
+        logger.critical(e)
+        exit(1)
+
+    logger.info("The bot is Up and Running")
+
