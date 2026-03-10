@@ -9,9 +9,9 @@ from logging.handlers import RotatingFileHandler
 
 def setup() -> logging.Logger:
     """create, setup and configure a logger"""
-    pattern = "%(asctime)s | %(filename)s > %(levelname)s: %(message)s"
-    dateformat = "%d/%m/%Y %H:%M:%S"
-    formatter = logging.Formatter(pattern, dateformat)
+    pattern_const = "%(asctime)s | %(filename)s > %(levelname)s: %(message)s"
+    dateformat_const = "%d/%m/%Y %H:%M:%S"
+    formatter = logging.Formatter(pattern_const, dateformat_const)
 
     logger = logging.getLogger(__name__)
     logger.setLevel(logging.DEBUG)
@@ -24,7 +24,7 @@ def setup() -> logging.Logger:
         os.makedirs("./log")
 
     file_handler = RotatingFileHandler(
-        filename="log/bot.log", maxBytes=2000000, backupCount=5 # 2000000byte == 2MB
+        filename="log/bot.log", maxBytes=2000000, backupCount=5  # 2000000byte == 2MB
     )
     file_handler.setLevel(logging.DEBUG)
     file_handler.setFormatter(formatter)
@@ -33,3 +33,6 @@ def setup() -> logging.Logger:
     logger.addHandler(file_handler)
 
     return logger
+
+
+LOGGER = setup()

@@ -1,29 +1,26 @@
+"""
+This module hendle .env loading and reading
+"""
 
 import os
 import re
 
 from dotenv import load_dotenv
-from logging import Logger
 
-log = [None]
-def set_log(_log:Logger) -> bool:
-    try:
-        log[0] = _log
-    except:
-        return False
-    return True
+from src.logger import LOGGER as log
+
 
 def set_path() -> str:
     """return the path for .env file"""
 
     path = ".env"
     if not os.path.exists(path):
-        log[0].warning("No '.env' file found in defoult path. OVERRIDE with custom path")
+        log.warning("No '.env' file found in default path. OVERRIDE with custom path")
         while True:
             print("direct path to file: ", end="")
             path = input()
             if path[-4:] == ".env":
-                log[0].debug('custom path is "%s"', path)
+                log.debug('custom path is "%s"', path)
                 break
 
             print("The specified path does not end with a .env file, retry")
@@ -34,12 +31,12 @@ def get_token(path: str) -> str:
     """get token from .env file"""
 
     if not load_dotenv(dotenv_path=path):
-        log[0].critical("No '.env' file found in custom path (could be empty)")
+        log.critical("No '.env' file found in custom path (could be empty)")
         return ""
 
     token = os.getenv("TELEGRAM-TOKEN")
     if token is None:
-        log[0].critical("No TELEGRAM-TOKEN found in environment variables")
+        log.critical("No TELEGRAM-TOKEN found in environment variables")
         return ""
 
     return token
@@ -51,7 +48,7 @@ def check_token(token: str) -> bool:
     regex_const = "^[0-9]{8,10}:[a-zA-Z0-9_-]{35}$"
 
     if re.fullmatch(regex_const, token) is None:
-        log[0].critical("Invalid token formatting")
+        log.critical("Invalid token formatting")
         return False
 
     return True

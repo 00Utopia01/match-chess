@@ -2,8 +2,6 @@
 This module handles the main Telegram bot logic for Match-Chess.
 """
 
-import os
-import re
 import sys
 
 from telegram import Update
@@ -16,16 +14,10 @@ from telegram.ext import (
     filters,
 )
 
-from src import logger
 from src import env
+from src.logger import LOGGER as log
 
-# Logger config >-------------------------------
-
-log = logger.setup()
-
-if not env.set_log(log):
-    log.warning("Uneble to set logger for .env file")
-
+log.info("------------------- Fresh Start -------------------")
 
 # Token setup >--------------------------------
 
