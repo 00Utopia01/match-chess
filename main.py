@@ -32,10 +32,13 @@ console_handler = logging.StreamHandler()
 console_handler.setLevel(logging.WARNING)
 console_handler.setFormatter(formatter)
 
+if not os.path.exists("./log"):
+    os.makedirs("./log")
+
 file_handler = RotatingFileHandler(
     filename="log/bot.log", maxBytes=2000000, backupCount=5
 )
-file_handler.setLevel(logging.INFO)
+file_handler.setLevel(logging.DEBUG)
 file_handler.setFormatter(formatter)
 
 logger.addHandler(console_handler)
@@ -45,11 +48,14 @@ logger.addHandler(file_handler)
 # Token setup >--------------------------------
 
 
-def get_token() -> str:
+def get_token(path:str) -> str:
     """get token from .env file"""
 
-    if not load_dotenv():
-        logger.critical("No '.env' file found")
+    if not load_dotenv(dotenv_path=path):
+        if path == None:
+            logger.critical("No '.env' file found or empty file")
+        else:
+            logger.critical("No '.env' file found in custom path or empty file")
         return ""
 
     token = os.getenv("TELEGRAM-TOKEN")
@@ -73,7 +79,22 @@ def check_token(token: str) -> bool:
 
 
 logger.info("Loading Token...")
-TOKEN = get_token()
+
+if not os.path.exists(".env"):
+    logger.warning("No '.env' file found in defoult path. OVERRIRE with custom path")
+    while True:
+        print("direct path to file: ", end="")
+        path = input()
+        if path[-4:] == ".env":
+            logger.debug(f"custom path is \"{path}\"")
+            break
+        else:
+            print("The specified path does not end with a .env file, retry")
+else:
+    path = ".env"
+
+
+TOKEN = get_token(path)
 if TOKEN == "" or not check_token(TOKEN):
     sys.exit(1)
 
