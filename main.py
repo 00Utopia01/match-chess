@@ -47,20 +47,31 @@ logger.addHandler(file_handler)
 
 # Token setup >--------------------------------
 
+def get_dotenv() -> str:
+    path = ".env"
+    if not os.path.exists(path):
+        logger.warning("No '.env' file found in defoult path. OVERRIDE with custom path")
+        while True:
+            print("direct path to file: ", end="")
+            path = input()
+            if path[-4:] == ".env":
+                logger.debug(f"custom path is \"{path}\"")
+                break
+            else:
+                print("The specified path does not end with a .env file, retry")
+    
+    return path
 
 def get_token(path:str) -> str:
     """get token from .env file"""
 
     if not load_dotenv(dotenv_path=path):
-        if path == None:
-            logger.critical("No '.env' file found or empty file")
-        else:
-            logger.critical("No '.env' file found in custom path or empty file")
+        logger.critical("No '.env' file found in custom path (could be empty)")
         return ""
 
     token = os.getenv("TELEGRAM-TOKEN")
     if token is None:
-        logger.critical("No TOKEN found in environment variables")
+        logger.critical("No TELEGRAM-TOKEN found in environment variables")
         return ""
 
     return token
@@ -80,21 +91,8 @@ def check_token(token: str) -> bool:
 
 logger.info("Loading Token...")
 
-if not os.path.exists(".env"):
-    logger.warning("No '.env' file found in defoult path. OVERRIRE with custom path")
-    while True:
-        print("direct path to file: ", end="")
-        path = input()
-        if path[-4:] == ".env":
-            logger.debug(f"custom path is \"{path}\"")
-            break
-        else:
-            print("The specified path does not end with a .env file, retry")
-else:
-    path = ".env"
 
-
-TOKEN = get_token(path)
+TOKEN = get_token(get_dotenv())
 if TOKEN == "" or not check_token(TOKEN):
     sys.exit(1)
 
