@@ -24,7 +24,7 @@ def setup() -> logging.Logger:
         os.makedirs("./log")
 
     file_handler = RotatingFileHandler(
-        filename="log/bot.log", maxBytes=2000000, backupCount=5
+        filename="log/bot.log", maxBytes=2000000, backupCount=5 # 2000000byte == 2MB
     )
     file_handler.setLevel(logging.DEBUG)
     file_handler.setFormatter(formatter)
