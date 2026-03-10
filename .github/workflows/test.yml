@@ -11,6 +11,8 @@ on:
     paths-ignore:
       - "README.md"
       - "docs/**"
+env:
+  TELEGRAM-TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
 
 jobs:
   test:
