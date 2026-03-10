@@ -2,3 +2,5 @@ venv/
 .env
 .mypy_cache/
 log/
+src/__pycache__
+lint.ps1

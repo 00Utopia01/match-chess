@@ -2,11 +2,9 @@
 This module handles the main Telegram bot logic for Match-Chess.
 """
 
-import logging
 import os
 import re
 import sys
-from logging.handlers import RotatingFileHandler
 
 from dotenv import load_dotenv
 from telegram import Update
@@ -19,59 +17,42 @@ from telegram.ext import (
     filters,
 )
 
+from src import logger
+
 # Logger config >-------------------------------
 
-LOGGING_PATTERN = "%(asctime)s | %(filename)s > %(levelname)s: %(message)s"
-LOGGING_DATEFORMAT = "%d/%m/%Y %H:%M:%S"
-formatter = logging.Formatter(LOGGING_PATTERN, LOGGING_DATEFORMAT)
-
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
-
-console_handler = logging.StreamHandler()
-console_handler.setLevel(logging.WARNING)
-console_handler.setFormatter(formatter)
-
-if not os.path.exists("./log"):
-    os.makedirs("./log")
-
-file_handler = RotatingFileHandler(
-    filename="log/bot.log", maxBytes=2000000, backupCount=5
-)
-file_handler.setLevel(logging.DEBUG)
-file_handler.setFormatter(formatter)
-
-logger.addHandler(console_handler)
-logger.addHandler(file_handler)
+log = logger.setup()
 
 
 # Token setup >--------------------------------
 
+
 def get_dotenv() -> str:
+    """return the path for .env file"""
     path = ".env"
     if not os.path.exists(path):
-        logger.warning("No '.env' file found in defoult path. OVERRIDE with custom path")
+        log.warning("No '.env' file found in defoult path. OVERRIDE with custom path")
         while True:
             print("direct path to file: ", end="")
             path = input()
             if path[-4:] == ".env":
-                logger.debug(f"custom path is \"{path}\"")
+                log.debug('custom path is "%s"', path)
                 break
-            else:
-                print("The specified path does not end with a .env file, retry")
-    
+
+            print("The specified path does not end with a .env file, retry")
     return path
 
-def get_token(path:str) -> str:
+
+def get_token(path: str) -> str:
     """get token from .env file"""
 
     if not load_dotenv(dotenv_path=path):
-        logger.critical("No '.env' file found in custom path (could be empty)")
+        log.critical("No '.env' file found in custom path (could be empty)")
         return ""
 
     token = os.getenv("TELEGRAM-TOKEN")
     if token is None:
-        logger.critical("No TELEGRAM-TOKEN found in environment variables")
+        log.critical("No TELEGRAM-TOKEN found in environment variables")
         return ""
 
     return token
@@ -83,13 +64,13 @@ def check_token(token: str) -> bool:
     regex_const = "^[0-9]{8,10}:[a-zA-Z0-9_-]{35}$"
 
     if re.fullmatch(regex_const, token) is None:
-        logger.critical("Invalid token formatting")
+        log.critical("Invalid token formatting")
         return False
 
     return True
 
 
-logger.info("Loading Token...")
+log.info("Loading Token...")
 
 
 TOKEN = get_token(get_dotenv())
@@ -129,7 +110,7 @@ async def caps(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # Bot Configuration >-------------------------------------
 
 if __name__ == "__main__":
-    logger.info("Starting...")
+    log.info("Starting...")
 
     application = ApplicationBuilder().token(TOKEN).build()
 
@@ -144,8 +125,8 @@ if __name__ == "__main__":
     try:
         application.run_polling()
     except InvalidToken:
-        logger.critical("The token was rejected by the server")
+        log.critical("The token was rejected by the server")
         sys.exit(1)
     except NetworkError:
-        logger.critical("Network error found")
+        log.critical("Network error found")
         sys.exit(1)
