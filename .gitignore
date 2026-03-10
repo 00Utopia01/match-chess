@@ -1,5 +1,7 @@
 venv/
 .env
+.vscode/
 __pycache__/
 run-lint.sh
 test/
+
