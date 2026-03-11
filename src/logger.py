@@ -2,8 +2,8 @@
 This module hendle the logger logic
 """
 
-import os
 import logging
+import os
 from logging.handlers import RotatingFileHandler
 
 
