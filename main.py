@@ -78,6 +78,19 @@ async def challenge(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
 
 
+async def commands_list(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Sends the user a list of all commands"""
+    if not update.message or not update.effective_user:
+        return
+
+    await context.bot.send_message(
+        chat_id=update.effective_user.id,
+        text=(
+            "List of available commands:\n" "/start\n" "/challenge"
+        ),  # Accept and deny commands to be added
+    )
+
+
 async def echo(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """this re-prints the message sent to the bot"""
     if not update.effective_chat or not update.message or not update.message.text:
@@ -101,6 +114,7 @@ if __name__ == "__main__":
     application = ApplicationBuilder().token(token).build()
 
     # tells the created application to listen to the varius commands
+    commands_list_handler = CommandHandler("commands", commands_list)
     start_handler = CommandHandler("start", start)
     challenge_handler = CommandHandler("challenge", challenge)
 
@@ -111,5 +125,6 @@ if __name__ == "__main__":
     application.add_handler(echo_handler)
     application.add_handler(caps_handler)
     application.add_handler(challenge_handler)
+    application.add_handler(commands_list_handler)
 
     application.run_polling()
