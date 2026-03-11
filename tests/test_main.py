@@ -1,8 +1,10 @@
 """Test for main.py (obsolete)"""
 
 from unittest.mock import AsyncMock
+
 import pytest
 from pytest_mock import MockerFixture
+
 from main import caps, echo, start
 
 
