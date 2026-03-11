@@ -5,12 +5,7 @@ This module handles the main Telegram bot logic for Match-Chess.
 import sys
 
 from telegram import Update
-from telegram.error import (
-    InvalidToken,
-    NetworkError,
-    BadRequest,
-    TelegramError,
-)
+from telegram.error import BadRequest, InvalidToken, NetworkError, TelegramError
 from telegram.ext import (
     ApplicationBuilder,
     CommandHandler,
