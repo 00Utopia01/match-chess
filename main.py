@@ -6,8 +6,8 @@ import logging
 import os
 
 from dotenv import load_dotenv
-from telegram.error import BadRequest, TelegramError
 from telegram import Update
+from telegram.error import BadRequest, TelegramError
 from telegram.ext import (
     ApplicationBuilder,
     CommandHandler,
@@ -34,11 +34,13 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     userid = update.effective_user.id
 
     await context.bot.send_message(
-        chat_id=update.effective_chat.id, text= (
+        chat_id=update.effective_chat.id,
+        text=(
             f"Welcome {username} to the Chess bot!\n"
             f"Your ID is {userid}, share it with your friends to play togheter"
-        )
+        ),
     )
+
 
 async def challenge(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Sends an invite to an user with the corresponding ID"""
@@ -57,18 +59,23 @@ async def challenge(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     challengeduser_id = int(context.args[0])
-    #Here should go the logic that connects the 2 users via database
+
+    # Here should go the logic that connects the 2 users via database
+
     try:
         await update.message.reply_text("Challenge Sent")
-        await context.bot.send_message(chat_id=challengeduser_id,
-        text=f"{sender_username} (ID = {sender_id}) has sent you an invite!"
+        await context.bot.send_message(
+            chat_id=challengeduser_id,
+            text=f"{sender_username} (ID = {sender_id}) has sent you an invite!",
         )
     except BadRequest:
         await update.message.reply_text(
             "Error delivering the challenge. ID code may be invalid or non-existent."
         )
     except TelegramError:
-        await update.message.reply_text("An unexpected error occurred while sending the challenge.")
+        await update.message.reply_text(
+            "An unexpected error occurred while sending the challenge."
+        )
 
 
 async def echo(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -93,11 +100,12 @@ if __name__ == "__main__":
     # create an application with a bot token
     application = ApplicationBuilder().token(token).build()
 
-    # tells the created application to listen to the "/start" command
+    # tells the created application to listen to the varius commands
     start_handler = CommandHandler("start", start)
+    challenge_handler = CommandHandler("challenge", challenge)
+
     echo_handler = MessageHandler(filters.TEXT & (~filters.COMMAND), echo)
     caps_handler = CommandHandler("caps", caps)
-    challenge_handler = CommandHandler("challenge", challenge)
 
     application.add_handler(start_handler)
     application.add_handler(echo_handler)
