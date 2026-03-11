@@ -2,6 +2,8 @@ venv/
 .env
 .vscode/
 __pycache__/
+.mypy_cache/
 run-lint.sh
+run-lint.ps1
 test/
-
+log/
