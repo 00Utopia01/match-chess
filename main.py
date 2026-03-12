@@ -24,9 +24,11 @@ log.info("------------------- Fresh Start -------------------")
 log.info("Loading Token...")
 
 
-TOKEN = env.get_token(env.set_path())
+TOKEN = env.get_token()
 if TOKEN == "" or not env.check_token(TOKEN):
     sys.exit(1)
+else:
+    log.info("Setting telegram bot token...")
 
 # Bot Commands >------------------------------------
 
