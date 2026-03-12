@@ -11,6 +11,7 @@ from src.logger import LOGGER as log
 
 
 def take_path_input():
+    """get input path for .env file"""
     return input("direct path to file: ")
 
 
@@ -27,8 +28,8 @@ def set_path() -> str:
     return path
 
 
-def get_token() -> str:
-    """get token from .env file"""
+def get_token() -> str | None:
+    """get token from .env file or environment variable"""
 
     token = os.getenv("TELEGRAM_TOKEN")
 
@@ -45,7 +46,7 @@ def get_token() -> str:
         # if .env cannot be found, ask the user to input .env path
         if not load_dotenv(dotenv_path=set_path()):
             log.critical("No '.env' file found in custom path (could be empty)")
-            return ""
+            return None
 
     token = os.getenv("TELEGRAM_TOKEN")
     return token
