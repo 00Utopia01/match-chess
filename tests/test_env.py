@@ -11,6 +11,7 @@ tokens = [
     ("12345678:abcdefghijklmnopqrstuvwxyz01_345-78", True),
 ]
 
+
 @pytest.mark.parametrize("token, validation", tokens)
 def test_check_token(token: str, validation: bool):
     """test if a token is in a valid format"""
@@ -33,13 +34,13 @@ def test_get_token_failure(mocker: MockerFixture, monkeypatch):
     monkeypatch.delenv("TELEGRAM_TOKEN", "test-token")
 
     mocker.patch.object(env, "load_dotenv", return_value=True)
-    assert env.get_token() == None
+    assert env.get_token() is None
 
 
 def test_set_path_exists(mocker: MockerFixture):
     """if the .env exists is returned"""
     mocker.patch("os.path.exists", return_value=True)
-    mocker.patch.object(env, "take_path_input", return_value=".env" )
+    mocker.patch.object(env, "take_path_input", return_value=".env")
 
     path = env.set_path()
 
@@ -51,7 +52,9 @@ def test_set_path_not_exists_1(mocker: MockerFixture):
     mocker.patch("os.path.exists", return_value=False)
 
     mocker.patch("builtins.print", return_value="correct-path/.env")
-    mocker.patch.object(env, "take_path_input", side_effect=["wrongpath","correct-path/.env"] )
+    mocker.patch.object(
+        env, "take_path_input", side_effect=["wrongpath", "correct-path/.env"]
+    )
     mock_print = mocker.patch("builtins.print")
 
     result = env.set_path()
@@ -62,6 +65,8 @@ def test_set_path_not_exists_1(mocker: MockerFixture):
     )
     assert result == "correct-path/.env"
 
+
 def test_take_path_input(mocker: MockerFixture):
+    """take file path input for .env"""
     mocker.patch("builtins.input", return_value="test")
     assert env.take_path_input() == "test"

@@ -52,11 +52,11 @@ def get_token() -> str | None:
     return token
 
 
-def check_token(token: str) -> bool:
+def check_token(token: str | None) -> bool:
     """chek if token is None or in a wrong format"""
     regex_const = "^[0-9]{8,10}:[a-zA-Z0-9_-]{35}$"
 
-    if re.fullmatch(regex_const, token) is None or token is None:
+    if token is None or re.fullmatch(regex_const, token) is None:
         log.critical("Invalid token formatting")
         return False
 

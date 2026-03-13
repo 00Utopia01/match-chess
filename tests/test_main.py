@@ -5,13 +5,12 @@ from unittest.mock import AsyncMock
 import pytest
 from pytest_mock import MockerFixture
 
-import main 
-
+import main
 
 
 @pytest.mark.asyncio
 async def test_start(mocker: MockerFixture):
-    """ "Assert if the callback calls the send_message function""" 
+    """ "Assert if the callback calls the send_message function"""
     # Arrange
     update = mocker.Mock()
     context = mocker.Mock()

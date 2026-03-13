@@ -19,8 +19,6 @@ from src.logger import LOGGER as log
 
 log.info("------------------- Fresh Start -------------------")
 
-
-
 # Bot Commands >------------------------------------
 
 
@@ -59,9 +57,8 @@ if __name__ == "__main__":
 
     log.info("Loading Token...")
 
-
     TOKEN = env.get_token()
-    if TOKEN == "" or not env.check_token(TOKEN):
+    if TOKEN is None or not env.check_token(TOKEN):
         sys.exit(1)
     else:
         log.info("Setting telegram bot token...")
