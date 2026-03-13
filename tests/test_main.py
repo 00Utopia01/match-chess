@@ -1,11 +1,11 @@
-"""Test for main.py"""
+"""Test for main.py (obsolete)"""
 
 from unittest.mock import AsyncMock
 
 import pytest
 from pytest_mock import MockerFixture
 
-from main import caps, echo, start
+import main
 
 
 @pytest.mark.asyncio
@@ -14,13 +14,10 @@ async def test_start(mocker: MockerFixture):
     # Arrange
     update = mocker.Mock()
     context = mocker.Mock()
-
     update.effective_chat.id = 12345
     context.bot.send_message = AsyncMock()
-
     # Act
-    await start(update, context)
-
+    await main.start(update, context)
     # Assert
     context.bot.send_message.assert_called_once_with(
         chat_id=12345, text="I'm a bot, please talk to me!"
@@ -33,14 +30,11 @@ async def test_echo(mocker: MockerFixture):
     # Arrange
     update = mocker.Mock()
     context = mocker.Mock()
-
     update.effective_chat.id = 12345
     update.message.text = "Hello World"
     context.bot.send_message = AsyncMock()
-
     # Act
-    await echo(update, context)
-
+    await main.echo(update, context)
     # Assert
     context.bot.send_message.assert_called_once_with(chat_id=12345, text="Hello World")
 
@@ -51,15 +45,11 @@ async def test_caps(mocker: MockerFixture):
     # Arrange
     update = mocker.Mock()
     context = mocker.Mock()
-
     update.effective_chat.id = 12345
-
     context.args = ["hello", "apple", "machine"]
     context.bot.send_message = AsyncMock()
-
     # Act
-    await caps(update, context)
-
+    await main.caps(update, context)
     # Assert
     context.bot.send_message.assert_called_once_with(
         chat_id=12345, text="HELLO APPLE MACHINE"

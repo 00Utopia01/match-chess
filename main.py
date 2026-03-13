@@ -2,11 +2,10 @@
 This module handles the main Telegram bot logic for Match-Chess.
 """
 
-import logging
-import os
+import sys
 
-from dotenv import load_dotenv
 from telegram import Update
+from telegram.error import InvalidToken, NetworkError
 from telegram.ext import (
     ApplicationBuilder,
     CommandHandler,
@@ -15,13 +14,12 @@ from telegram.ext import (
     filters,
 )
 
-load_dotenv()
-token = os.getenv("TELEGRAM-TOKEN")
-if token is None:
-    raise ValueError("No TOKEN found in environment variables")
+from src import env
+from src.logger import LOGGER as log
 
-LOGGING_PATTERN = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-logging.basicConfig(format=LOGGING_PATTERN, level=logging.INFO)
+log.info("------------------- Fresh Start -------------------")
+
+# Bot Commands >------------------------------------
 
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -51,11 +49,26 @@ async def caps(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await context.bot.send_message(chat_id=update.effective_chat.id, text=text_caps)
 
 
-if __name__ == "__main__":
-    # create an application with a bot token
-    application = ApplicationBuilder().token(token).build()
+# Bot Configuration >-------------------------------------
 
-    # tells the created application to listen to the "/start" command
+if __name__ == "__main__":
+
+    # Token setup >--------------------------------
+
+    log.info("Loading Token...")
+
+    TOKEN = env.get_token()
+    if TOKEN is None or not env.check_token(TOKEN):
+        sys.exit(1)
+    else:
+        log.info("Setting telegram bot token...")
+
+    # Bot Application setup >--------------------------------
+
+    log.info("Starting...")
+
+    application = ApplicationBuilder().token(TOKEN).build()
+
     start_handler = CommandHandler("start", start)
     echo_handler = MessageHandler(filters.TEXT & (~filters.COMMAND), echo)
     caps_handler = CommandHandler("caps", caps)
@@ -64,4 +77,11 @@ if __name__ == "__main__":
     application.add_handler(echo_handler)
     application.add_handler(caps_handler)
 
-    application.run_polling()
+    try:
+        application.run_polling()
+    except InvalidToken:
+        log.critical("The token was rejected by the server")
+        sys.exit(1)
+    except NetworkError:
+        log.critical("Network error found")
+        sys.exit(1)
