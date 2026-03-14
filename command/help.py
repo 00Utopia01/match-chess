@@ -1,11 +1,14 @@
+"""Function that shows the list of all available commands"""
+
 from telegram import Update
-from telegram.ext import \
-    ContextTypes  # ApplicationBuilder,; CommandHandler,; MessageHandler,; filters,
+from telegram.ext import (  # ApplicationBuilder,; CommandHandler,; MessageHandler,; filters,
+    ContextTypes,
+)
 
 # from telegram.error import BadRequest, InvalidToken, NetworkError, TelegramError
 
 
-async def help(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def command_list(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Sends the user a list of all commands"""
     if not update.message or not update.effective_user:
         return

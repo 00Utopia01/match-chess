@@ -1,6 +1,9 @@
+"""Function that rewrites a given string in CAPS format"""
+
 from telegram import Update
-from telegram.ext import \
-    ContextTypes  # ApplicationBuilder,; CommandHandler,; MessageHandler,; filters,
+from telegram.ext import (  # ApplicationBuilder,; CommandHandler,; MessageHandler,; filters,
+    ContextTypes,
+)
 
 # from telegram.error import BadRequest, InvalidToken, NetworkError, TelegramError
 

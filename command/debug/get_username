@@ -1,0 +1,6 @@
+from telegram import Update
+
+#this is a debug/utily function to easily get the user's username
+
+async def get_username(update: Update):
+    return update.effective_user.first_name

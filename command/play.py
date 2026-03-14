@@ -1,7 +1,10 @@
+"""Function to inizialize a match between 2 players"""
+
 from telegram import Update
 from telegram.error import BadRequest, TelegramError  # ,InvalidToken, NetworkError
-from telegram.ext import \
-    ContextTypes  # ApplicationBuilder,; CommandHandler,; MessageHandler,; filters,
+from telegram.ext import (  # ApplicationBuilder,; CommandHandler,; MessageHandler,; filters,
+    ContextTypes,
+)
 
 
 async def play(update: Update, context: ContextTypes.DEFAULT_TYPE):

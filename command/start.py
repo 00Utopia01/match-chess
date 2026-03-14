@@ -1,6 +1,11 @@
+"""Welcoming function"""
+
 from telegram import Update
-from telegram.ext import \
-    ContextTypes  # ApplicationBuilder,; CommandHandler,; MessageHandler,; filters,
+from telegram.ext import (  # ApplicationBuilder,; CommandHandler,; MessageHandler,; filters,
+    ContextTypes,
+)
+
+from command.debug.get_id import get_user_id
 
 # from telegram.error import BadRequest, InvalidToken, NetworkError, TelegramError
 
@@ -11,7 +16,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     username = update.effective_user.first_name
-    userid = update.effective_user.id
+    userid = get_user_id(update)
 
     await context.bot.send_message(
         chat_id=update.effective_chat.id,

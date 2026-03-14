@@ -9,7 +9,7 @@ from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, fil
 
 from command.debug.caps import caps
 from command.debug.echo import echo
-from command.help import help as help_command
+from command.help import command_list as help_command
 from command.play import play
 from command.start import start
 from src import env
