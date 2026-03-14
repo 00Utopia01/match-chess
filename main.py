@@ -19,15 +19,6 @@ from src.logger import LOGGER as log
 
 log.info("------------------- Fresh Start -------------------")
 
-# Token setup >--------------------------------
-
-log.info("Loading Token...")
-
-
-TOKEN = env.get_token(env.set_path())
-if TOKEN == "" or not env.check_token(TOKEN):
-    sys.exit(1)
-
 # Bot Commands >------------------------------------
 
 
@@ -118,6 +109,19 @@ async def caps(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # Bot Configuration >-------------------------------------
 
 if __name__ == "__main__":
+
+    # Token setup >--------------------------------
+
+    log.info("Loading Token...")
+
+    TOKEN = env.get_token()
+    if TOKEN is None or not env.check_token(TOKEN):
+        sys.exit(1)
+    else:
+        log.info("Setting telegram bot token...")
+
+    # Bot Application setup >--------------------------------
+
     log.info("Starting...")
 
     application = ApplicationBuilder().token(TOKEN).build()
