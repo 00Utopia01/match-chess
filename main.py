@@ -5,11 +5,17 @@ This module handles the main Telegram bot logic for Match-Chess.
 import sys
 
 from telegram.error import InvalidToken, NetworkError
-from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, filters
+from telegram.ext import (
+    ApplicationBuilder,
+    CallbackQueryHandler,
+    CommandHandler,
+    MessageHandler,
+    filters,
+)
 
 from command.debug.caps import caps
 from command.debug.echo import echo
-from command.eula import eula
+from command.eula import eula, eula_output
 from command.help import command_list as help_command
 from command.play import play
 from command.start import start
@@ -50,7 +56,9 @@ if __name__ == "__main__":
     application.add_handler(caps_handler)
     application.add_handler(challenge_handler)
     application.add_handler(commands_list_handler)
+
     application.add_handler(eula_handler)
+    application.add_handler(CallbackQueryHandler(eula_output))
 
     # Running >--------------------------------
     try:
