@@ -23,6 +23,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         chat_id=update.effective_chat.id,
         text=(
             f"Welcome {username} to the Chess bot!\n"
-            f"Your ID is {userid}, share it with your friends to play togheter"
+            f"Your ID is {userid}, share it with your friends to play togheter\n\n"
+            "In order to use this bot, read and accept the /eula paragraph!"
         ),
     )
