@@ -6,6 +6,7 @@ from telegram.ext import (  # ApplicationBuilder,; CommandHandler,; MessageHandl
 )
 
 from command.debug.get_id import get_user_id
+from command.debug.get_username import get_username
 
 # from telegram.error import BadRequest, InvalidToken, NetworkError, TelegramError
 
@@ -15,7 +16,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not update.effective_chat or not update.effective_user:
         return
 
-    username = update.effective_user.first_name
+    username = get_username(update)
     userid = get_user_id(update)
 
     await context.bot.send_message(
