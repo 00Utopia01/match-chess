@@ -1,13 +1,12 @@
 """Welcoming function"""
 
 from telegram import Update
-from telegram.ext import (  # ApplicationBuilder,; CommandHandler,; MessageHandler,; filters,
-    ContextTypes,
-)
+from telegram.ext import ContextTypes
 
 from command.debug.get_id import get_user_id
 from command.debug.get_username import get_username
 
+# from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, filters
 # from telegram.error import BadRequest, InvalidToken, NetworkError, TelegramError
 
 
