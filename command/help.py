@@ -16,6 +16,11 @@ async def command_list(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await context.bot.send_message(
         chat_id=update.effective_user.id,
         text=(
-            "List of available commands:\n" "/start\n" "/challenge"
-        ),  # Accept and deny commands to be added
+            "<b>List of available commands:</b>\n"
+            "<i>/start</i>\n"
+            "<i>/commands</i>  (to see the commands list)\n"
+            "<i>/eula</i>  (To read and accept/refuse the eula agreement)\n"
+            "<i>/play [USER ID]</i>  (To start an online Chess match)"
+        ),
+        parse_mode="HTML",
     )
