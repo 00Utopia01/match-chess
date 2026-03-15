@@ -1,10 +1,9 @@
 """Debug function that rewrites the user input"""
 
 from telegram import Update
-from telegram.ext import (  # ApplicationBuilder,; CommandHandler,; MessageHandler,; filters,
-    ContextTypes,
-)
+from telegram.ext import ContextTypes
 
+# from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, filters
 # from telegram.error import BadRequest, InvalidToken, NetworkError, TelegramError
 
 
