@@ -1,9 +1,9 @@
 """Function to either accept or refuse eula policies in order to use the bot"""
 
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
-from telegram.ext import (  # ApplicationBuilder,; CommandHandler,; MessageHandler,; filters,
-    ContextTypes,
-)
+from telegram.ext import ContextTypes
+
+# from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, filters
 
 
 async def eula(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -12,8 +12,8 @@ async def eula(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not update.effective_chat or not update.effective_user:
         return
 
-    accept_button = InlineKeyboardButton("I accept", callback_data="accepted")
-    refuse_button = InlineKeyboardButton("I refuse", callback_data="refused")
+    accept_button = InlineKeyboardButton("I accept", callback_data="euela accepted")
+    refuse_button = InlineKeyboardButton("I refuse", callback_data="euela declined")
 
     options_layout = [[accept_button, refuse_button]]
 
@@ -34,26 +34,3 @@ async def eula(update: Update, context: ContextTypes.DEFAULT_TYPE):
         ),
         reply_markup=button_interface,
     )
-
-
-async def eula_output(update: Update, _context: ContextTypes.DEFAULT_TYPE):
-    """This function lets the user accept or refuse eula via interface"""
-
-    if not update.effective_chat or not update.effective_user:
-        return
-
-    eula_query = update.callback_query
-
-    if not eula_query:
-        return
-
-    await eula_query.answer()
-
-    if eula_query.data == "accepted":
-        await eula_query.edit_message_text("You succesfully accepted EULA!")
-
-    elif eula_query.data == "refused":
-        # here goes the logic that removes the user from the database
-        await eula_query.edit_message_text(
-            "You refused EULA!\n Unfortunately you cannot utilize this bot",
-        )

@@ -15,11 +15,13 @@ from telegram.ext import (
 
 from command.debug.caps import caps
 from command.debug.echo import echo
-from command.eula import eula, eula_output
+from command.eula import eula
 from command.help import command_list as help_command
-from command.play import play
 from command.start import start
+
+# from command.play import play
 from src import env
+from src.callback import callback_finder
 from src.logger import LOGGER as log
 
 if __name__ == "__main__":
@@ -45,20 +47,21 @@ if __name__ == "__main__":
     # Bot Commands >----------------------------------
     commands_list_handler = CommandHandler("commands", help_command)
     start_handler = CommandHandler("start", start)
-    challenge_handler = CommandHandler("challenge", play)
+    # challenge_handler = CommandHandler("play", play)
     eula_handler = CommandHandler("eula", eula)
 
     echo_handler = MessageHandler(filters.TEXT & (~filters.COMMAND), echo)
     caps_handler = CommandHandler("caps", caps)
 
-    application.add_handler(start_handler)
     application.add_handler(echo_handler)
     application.add_handler(caps_handler)
-    application.add_handler(challenge_handler)
+    # application.add_handler(challenge_handler)
     application.add_handler(commands_list_handler)
 
+    application.add_handler(start_handler)
     application.add_handler(eula_handler)
-    application.add_handler(CallbackQueryHandler(eula_output))
+
+    application.add_handler(CallbackQueryHandler(callback_finder))
 
     # Running >--------------------------------
     try:
