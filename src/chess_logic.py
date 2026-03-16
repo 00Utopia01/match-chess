@@ -36,7 +36,9 @@ async def move(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("The inserted move is invalid or non existent!")
         return
     
-    # board = context.chat_data.get('board')
+    # board = context.chat_data.get('board') 
+    # line 39 needs to be complemented with the line"board = context.chat_data['board']"
+
 
     # if user_move in board.legal_moves:
         # board.push(user_move)
