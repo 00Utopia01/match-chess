@@ -1,13 +1,14 @@
 """This module contains the chess logic"""
-
-from telegram import Update
-from telegram.ext import ContextTypes
 import chess
+import chess.svg
+import cairosvg
+import io
 
 QUEUE: list[int] = []
 
 
 def create_game(id1: int, id2: int):
+    """creates a new game"""
     board = chess.Board()
 
     if id1 == 1:  # TEMP
@@ -18,36 +19,33 @@ def create_game(id1: int, id2: int):
     return board
 
 
-async def move(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if not update.effective_chat or not update.effective_user:
-        return
-
-    if context.args:
-        user_move = context.args[0]
-        user_move = user_move.lower()
-        user_move = user_move.replace(" ", "")
-        try:
-            user_move = chess.Move.from_uci(user_move)
-            await update.message.reply_text("[DEBUG] : INSERTED CORRECT FORMAT")
-        except:
-            await update.message.reply_text("Inserted move is not in UCI format!")
-            return
-    else:
-        await update.message.reply_text("The inserted move is invalid or non existent!")
-        return
+def move(board: chess.Board, string: str):
+    """Moves a piece along the board"""
+    string = string.lower()
+    string = string.replace(" ", "")
     
-    # board = context.chat_data.get('board') 
-    # line 39 needs to be complemented with the line"board = context.chat_data['board']"
+    try:
+        string = chess.Move.from_uci(string)
+    except:
+        return 1# invalid UCI format or non existent string 
+    
+    if string in board.legal_moves:
+        board.push(move)
+    else:
+        if board.is_check():
+            return 2# Invalid move (player under check)
+        else:
+            return 3# Generic Invalid move
 
+def show_board(board: chess.Board):
+    """Function that converts the board to png"""
+    svg_string = chess.svg.board(board,size = 400)
+    png_bytes  = cairosvg.svg2png(bytestring=svg_string.encode('utf-8'))
 
-    # if user_move in board.legal_moves:
-        # board.push(user_move)
-    # else:
-        # if board.is_check():
-            # print("You can't do this move when you are under check")
-        # else:
-            # print("Invalid or non-existent move!")
+    img = io.BytesIO(png_bytes)
+    img.name = "scacchiera.png"
 
+    return img
 
 def matchmaking(id: int):
     QUEUE.append(id)
