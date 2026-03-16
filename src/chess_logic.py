@@ -37,6 +37,7 @@ def move(board: chess.Board, string: str):
         else:
             return 3# Generic Invalid move
 
+
 def show_board(board: chess.Board):
     """Function that converts the board to png"""
     svg_string = chess.svg.board(board,size = 400)
@@ -45,7 +46,8 @@ def show_board(board: chess.Board):
     img = io.BytesIO(png_bytes)
     img.name = "scacchiera.png"
 
-    return img
+    return img # Returns board's png ready to be sent via BOT
+
 
 def matchmaking(id: int):
     QUEUE.append(id)
