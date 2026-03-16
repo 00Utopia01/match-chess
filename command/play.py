@@ -6,7 +6,7 @@ from telegram import CopyTextButton, InlineKeyboardButton, InlineKeyboardMarkup,
 from telegram.error import BadRequest, TelegramError
 from telegram.ext import ContextTypes
 
-from src.Chess import matchmaking
+from src.chess_logic import matchmaking
 
 # from chess import Board
 # from telegram.error import InvalidToken, NetworkError

@@ -13,6 +13,7 @@ from telegram.ext import (
     filters,
 )
 
+from src.chess_logic import move as debugfunc #(DEBUG FUNC)
 from command.debug.caps import caps
 from command.debug.echo import echo
 from command.eula import eula
@@ -49,6 +50,7 @@ if __name__ == "__main__":
     start_handler = CommandHandler("start", start)
     # challenge_handler = CommandHandler("play", play)
     eula_handler = CommandHandler("eula", eula)
+    user_move_handler = CommandHandler("move", debugfunc) #(DEBUG FUNC)
 
     echo_handler = MessageHandler(filters.TEXT & (~filters.COMMAND), echo)
     caps_handler = CommandHandler("caps", caps)
@@ -57,6 +59,7 @@ if __name__ == "__main__":
     application.add_handler(caps_handler)
     # application.add_handler(challenge_handler)
     application.add_handler(commands_list_handler)
+    application.add_handler(user_move_handler)
 
     application.add_handler(start_handler)
     application.add_handler(eula_handler)
