@@ -3,51 +3,158 @@
 from random import randint
 
 from telegram import CopyTextButton, InlineKeyboardButton, InlineKeyboardMarkup, Update
-from telegram.error import BadRequest, TelegramError
+
+# from telegram.error import BadRequest, TelegramError
 from telegram.ext import ContextTypes
 
 from src.chess_logic import matchmaking
 
-# from chess import Board
-# from telegram.error import InvalidToken, NetworkError
-# from telegam.ext import ApplicationBuilder, CommandHandler, MessageHandler, filters
+# from src.db_manager import DB
 
 
-# from src.Chess import create_game
+# QUERY TEMP >---------------------------
 
 
-# class DB:
-#    """ Simulate our DB"""
-#    def __init__(_id:int|None=None,_P1:int|None=None,_P2:int|None=None,_board:Board|None=None):
-#        game_id = _id
-#        P1 = _P1
-#        P2 = _P2
-#        board = _board
-
-
-def query1(temp: str):  # TEMP
+def query1(temp: str) -> bool:  # TEMP
     """placeholder of a query"""
     if temp:
         return True
     return False
 
 
-def query2(temp: str):  # TEMP
+def query2(temp: str) -> str:  # TEMP
     """placeholder of a query"""
     if temp:
-        return 1234
-    return 1234
+        return "1234"
+    return "1234"
 
 
 def query3(temp: str):  # TEMP
     """placeholder of a query"""
     if temp:
-        return 7584929619
-    return 4321
+        return "848994744"  # "7584929619"
+    return "4321"
+
+
+def query4(temp, temp2):  # TEMP
+    """placeholder of a query"""
+    if temp:
+        if temp2:
+            return
+    return
+
+
+# Messages >---------------------------------
+
+
+async def self_match(update: Update):
+    """message sent when self_match error occur"""
+
+    if update.message is None:
+        return
+
+    await update.message.reply_text("You can't challenge yourself!")
+    return
+
+
+async def no_user_db(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """message sent when the user is not in the DB"""
+
+    if update.effective_chat is None:
+        return
+
+    link_button = InlineKeyboardButton(
+        "copy link", copy_text=CopyTextButton("https://t.me/mchessqd_bot")
+    )
+
+    markup = InlineKeyboardMarkup([[link_button]])
+    await context.bot.send_message(
+        chat_id=update.effective_chat.id,
+        text="No user found with this name, check if is correct or invite them with this link",
+        reply_markup=markup,
+    )
+    return
+
+
+async def match_request(
+    p2_id: str, mode: int, update: Update, context: ContextTypes.DEFAULT_TYPE
+):
+    """message sent to request a match"""
+    if update.effective_user is None:
+        return
+
+    accept_button = InlineKeyboardButton("I accept", callback_data="match accepted")
+    refuse_button = InlineKeyboardButton("I refuse", callback_data="match declined")
+
+    options_layout = [[accept_button, refuse_button]]
+
+    button_interface = InlineKeyboardMarkup(options_layout)
+
+    _text = f"{update.effective_user.full_name} invited you to a match"
+
+    if mode == 1:
+        _text = _text + " where you are black"
+
+    if mode == 2:
+        _text = _text + " where you are white"
+
+    await context.bot.send_message(
+        chat_id=p2_id,
+        text=_text,
+        reply_markup=button_interface,
+    )
+
+
+# Logic >-------------------------------------------
+
+
+async def custom_match(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Sends an invite to an user with the corresponding ID"""
+
+    if context.args is None or update.effective_user is None:
+        return
+
+    if update.message is None or update.effective_chat is None:
+        return
+
+    if context.args[0] == update.effective_user.name:
+        await self_match(update)
+        return
+
+    if not query1(context.args[0]):  # TEMP
+        await no_user_db(update, context)
+        return
+
+    p2_id = query3(context.args[0])  # TEMP
+
+    p1_is_white = bool(randint(0, 1))
+    mode = 0
+
+    print(context.args)
+
+    if len(context.args) == 2 and context.args[1] == ("-w" or "-W"):
+        p1_is_white = True
+        mode = 1
+    elif len(context.args) == 2 and context.args[1] == ("-b" or "-B"):
+        p1_is_white = False
+        mode = 2
+    else:
+        return
+
+    if p1_is_white:
+        query4(update.effective_user.id, p2_id)
+    else:
+        query4(p2_id, update.effective_user.id)
+
+        print(mode)
+
+    await match_request(p2_id, mode, update, context)
+
+    return
 
 
 async def online(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """cerca player online"""
+    """create a match vs random player online"""
     if not context:  # TEMP
         return  # TEMP
 
@@ -62,68 +169,13 @@ async def online(update: Update, context: ContextTypes.DEFAULT_TYPE):
     return
 
 
-async def custom_match(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """cerca l'utente specifico"""
-
-    if context.args is None or update.effective_user is None:
-        return
-
-    if update.message is None or update.effective_chat is None:
-        return
-
-    if context.args[0] == update.effective_user.name:
-        await update.message.reply_text("You can't challenge yourself!")
-        return
-
-    if not query1(context.args[0]):  # TEMP
-        link_button = InlineKeyboardButton(
-            "copy link", copy_text=CopyTextButton("https://t.me/mchessqd_bot")
-        )
-
-        markup = InlineKeyboardMarkup([[link_button]])
-        await context.bot.send_message(
-            chat_id=update.effective_chat.id,
-            text="No user found with this name, check if is correct or invite them with this link",
-            reply_markup=markup,
-        )
-        return
-
-    p2_id = query3(context.args[0])  # TEMP
-    p1_is_white = bool(randint(0, 1))
-
-    if len(context.args) > 2 and context.args[1] == ("-w" or "-W"):
-        p1_is_white = True
-    elif len(context.args) > 2 and context.args[1] == ("-b" or "-B"):
-        p1_is_white = False
-
-    accept_button = InlineKeyboardButton("I accept", callback_data="match accepted")
-    refuse_button = InlineKeyboardButton("I refuse", callback_data="match declined")
-
-    options_layout = [[accept_button, refuse_button]]
-
-    button_interface = InlineKeyboardMarkup(options_layout)
-
-    await context.bot.send_message(
-        chat_id=p2_id,
-        text=f"{update.effective_user.full_name} invited you tu a match",
-        reply_markup=button_interface,
-    )
-
-    print("godo")
-
-    if p1_is_white:  # TEMP
-        return
-
-    return None
-
-
 async def play(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Sends an invite to an user with the corresponding ID"""
+    """Decode commands parameters"""
 
     if not update.message or not update.effective_user:
         return
 
-    if not context.args:
+    if context.args is None:  # check
         await online(update, context)
         return
 
@@ -131,28 +183,4 @@ async def play(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await custom_match(update, context)
         return
 
-    sender_id = update.effective_user.id
-    sender_username = update.effective_user.first_name
-
-    if sender_id == int(context.args[0]):
-        await update.message.reply_text("You can't challenge yourself!")
-        return
-
-    challengeduser_id = int(context.args[0])
-
-    # Here should go the logic that connects the 2 users via database
-
-    try:
-        await update.message.reply_text("Challenge Sent")
-        await context.bot.send_message(
-            chat_id=challengeduser_id,
-            text=f"{sender_username} (ID = {sender_id}) has sent you an invite!",
-        )
-    except BadRequest:
-        await update.message.reply_text(
-            "Error delivering the challenge. ID code may be invalid or non-existent."
-        )
-    except TelegramError:
-        await update.message.reply_text(
-            "An unexpected error occurred while sending the challenge."
-        )
+    return
