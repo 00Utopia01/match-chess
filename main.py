@@ -17,9 +17,8 @@ from command.debug.caps import caps
 from command.debug.echo import echo
 from command.eula import eula
 from command.help import command_list as help_command
+from command.play import play
 from command.start import start
-
-# from command.play import play
 from src import env
 from src.callback import callback_finder
 from src.logger import LOGGER as log
@@ -45,9 +44,9 @@ if __name__ == "__main__":
     application = ApplicationBuilder().token(TOKEN).build()
 
     # Bot Commands >----------------------------------
-    commands_list_handler = CommandHandler("commands", help_command)
+    commands_list_handler = CommandHandler("help", help_command)
     start_handler = CommandHandler("start", start)
-    # challenge_handler = CommandHandler("play", play)
+    play_handler = CommandHandler("play", play)
     eula_handler = CommandHandler("eula", eula)
 
     echo_handler = MessageHandler(filters.TEXT & (~filters.COMMAND), echo)
@@ -55,7 +54,7 @@ if __name__ == "__main__":
 
     application.add_handler(echo_handler)
     application.add_handler(caps_handler)
-    # application.add_handler(challenge_handler)
+    application.add_handler(play_handler)
     application.add_handler(commands_list_handler)
 
     application.add_handler(start_handler)
