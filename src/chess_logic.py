@@ -5,6 +5,7 @@ import io
 import cairosvg  # type: ignore
 import chess
 import chess.svg
+from PIL import Image
 
 QUEUE: list[int] = []
 
@@ -33,14 +34,19 @@ def move(board: chess.Board, string: str):
 
 
 def show_board(board: chess.Board):
-    """Function that converts the board to png"""
+    """Function that converts the board to WEBP format"""
     svg_string = chess.svg.board(board, size=325)
     png_bytes = cairosvg.svg2png(bytestring=svg_string.encode("utf-8"))
 
-    img = io.BytesIO(png_bytes)
-    img.name = "scacchiera.png"
+    img = Image.open(io.BytesIO(png_bytes))
 
-    return img  # Returns board's png ready to be sent via BOT
+    webp_buffer = io.BytesIO()
+    img.save(webp_buffer, format="WEBP", quality=80)
+
+    webp_buffer.seek(0)
+    webp_buffer.name = "Board.webp"
+
+    return webp_buffer  # Returns board's WEBP ready to be sent via BOT
 
 
 def matchmaking(user_id: int):
