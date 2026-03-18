@@ -63,7 +63,7 @@ async def match_accept(
     board = create_board()
     query1(board)
 
-    img = show_board(board)
+    img = await show_board(update, context, board)
     p2_id = query2(update.effective_user.id)
     p2_name = query3(p2_id)
     await context.bot.delete_message(
