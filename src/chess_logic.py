@@ -9,15 +9,9 @@ import chess.svg
 QUEUE: list[int] = []
 
 
-def create_game(id1: int, id2: int):
+def create_board():
     """creates a new game"""
     board = chess.Board()
-
-    if id1 == 1:  # TEMP
-        return board
-    if id2 == 1:  # TEMP
-        return board
-
     return board
 
 
@@ -40,7 +34,7 @@ def move(board: chess.Board, string: str):
 
 def show_board(board: chess.Board):
     """Function that converts the board to png"""
-    svg_string = chess.svg.board(board, size=400)
+    svg_string = chess.svg.board(board, size=325)
     png_bytes = cairosvg.svg2png(bytestring=svg_string.encode("utf-8"))
 
     img = io.BytesIO(png_bytes)
@@ -54,6 +48,6 @@ def matchmaking(user_id: int):
     QUEUE.append(user_id)
 
     if len(QUEUE) >= 2:
-        create_game(QUEUE[0], QUEUE[1])
+        # create_board(QUEUE[0], QUEUE[1])
         QUEUE.pop(0)
         QUEUE.pop(0)
