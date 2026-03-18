@@ -9,11 +9,11 @@ from telegram.ext import ContextTypes
 
 async def command_list(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Sends the user a list of all commands"""
-    if not update.message or not update.effective_user:
+    if not update.message or not update.effective_chat:
         return
 
     await context.bot.send_message(
-        chat_id=update.effective_user.id,
+        chat_id=update.effective_chat.id,
         text=(
             "<b>List of available commands:</b>\n"
             "<i>/start</i>\n"
