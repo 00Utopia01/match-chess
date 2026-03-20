@@ -2,9 +2,10 @@
 This module handles MySQL database calls
 """
 
+import chess
 import mysql.connector
 from mysql.connector import errorcode
-import chess
+
 from src.logger import LOGGER as log
 
 
@@ -23,17 +24,21 @@ class MatchesDB:
             self.db = mysql.connector.connect(**config)
             self.cursor = self.db.cursor()
         except mysql.connector.Error as err:
-            if err.errno == errorcode.ER_ACCESS_DENIED_ERROR:
-                log.critical("Something is wrong with your user name or password")
-            elif err.errno == errorcode.ER_BAD_DB_ERROR:
-                log.critical("Database does not exist")
-            else:
-                log.critical(f"Cannot connect to database: {err}")
+            self._handle_error(err)
 
-            raise Exception
+            raise  # Raises the original error
+
+    def _handle_error(self, err):
+        """Handles connection errors in the init process"""
+        if err.errno == errorcode.ER_ACCESS_DENIED_ERROR:
+            log.critical("Auth failure: check username/password")
+        elif err.errno == errorcode.ER_BAD_DB_ERROR:
+            log.critical("Database does not exist")
+        else:
+            log.critical("Database error: %s", err)
 
     def close(self):
-        """close connection with the server"""
+        """Closes connection to the server"""
         self.cursor.close()
         self.db.close()
 
@@ -53,36 +58,43 @@ class MatchesDB:
             return True
         except mysql.connector.Error as err:
             if err.errno == errorcode.ER_DUP_ENTRY:
-                log.error(f"Duplicate entry {user_id}")
+                log.error("Duplicate entry %s", user_id)
             else:
-                log.error(f"Database raised an exception during isertion, {err}")
+                log.error("Database raised an exception during isertion, %s", err)
 
             return False
 
     def del_user(self, user_id: str) -> bool:
+        """Deletes the user with the given ID"""
         sql = "DELETE FROM User WHERE ID_User = %s;"
         self.cursor.execute(sql, (user_id,))
         self.db.commit()
 
         affected_rows = self.cursor.rowcount
         if affected_rows != 0:
-            log.debug(f"Deleted user:{user_id}, affected rows: {affected_rows}")
+            log.debug("Deleted user:%s, affected rows: %s", user_id, affected_rows)
             return True
-        else:
-            log.debug(f"User:{user_id} does not exist, affected rows: {affected_rows}")
 
-    def get_username(self, user_id: str) -> str:
-        """get the username with user_id"""
+        log.debug("User:%s does not exist, affected rows: %s", user_id, affected_rows)
+        return False
+
+    def get_username(self, user_id: str) -> str | None:
+        """Fetches the username for a given user_id from the database."""
         query = "SELECT username FROM User WHERE ID_User = %s"
-        self.cursor.execute(query, (user_id,))
 
-        record = self.cursor.fetchone()
-        if record is None:
-            log.error(f"User_id:{user_id} not found")
+        self.cursor.execute(query, (user_id,))
+        result = self.cursor.fetchone()
+
+        # Check that the database doesn't return a dict instead of a RowType
+        if not isinstance(result, tuple):
+            log.error("Some error occurred while fetching: %s", user_id)
             return None
 
-        username = record[0]
-        return username
+        if result:
+            # result is typically a tuple like ('JohnDoe',)
+            return str(result[0])
+        log.warning("User_id: %s not found in database", user_id)
+        return None
 
     def show_table(self, table_name: str):
         """select * on a specified table"""
@@ -101,17 +113,17 @@ class MatchesDB:
                 print(record)
         except mysql.connector.Error as err:
             if err.errno == errorcode.ER_NO_SUCH_TABLE:
-                log.error(f"No such table {table_name}")
+                log.error("No such table %s", table_name)
             else:
-                log.error(f"Database raised an exception while querying, {err}")
+                log.error("Database raised an exception while querying, %s", err)
 
             return
 
-    def start_match(self, ID_white1: str, ID_black2: str) -> bool:
+    def start_match(self, id_white: str, id_black: str) -> bool:
         """insert a match record into UserMatch"""
 
-        if not ID_white1 or not ID_black2:
-            log.error(f"Invalid parameters: {ID_white1}, {ID_black2}")
+        if not id_white or not id_black:
+            log.error("Invalid parameters: %s, %s", id_white, id_black)
             return False
 
         sql = """
@@ -120,47 +132,52 @@ class MatchesDB:
 
         chessboard = chess.Board()
 
-        ongoing_match_id = self.get_active_match(ID_white1, ID_black2)
-        log.debug(f"Start_match.ongoing_match = {ongoing_match_id}")
+        ongoing_match_id = self.get_active_match(id_white, id_black)
+        log.debug("Start_match.ongoing_match = %s", ongoing_match_id)
 
         # check there is not an active game between the two players
         if ongoing_match_id is None:
-            values = (ID_white1, ID_black2, chessboard.fen())
+            values = (id_white, id_black, chessboard.fen())
             self.cursor.execute(sql, values)
             self.db.commit()
-            log.debug(f"Match started between {ID_white1} and {ID_black2}")
+            log.debug("Match started between %s and %s", id_white, id_black)
             return True
-        else:
-            log.error(
-                f"There is already an ongoing match between the two players: {ID_white1} and {ID_black2}"
-            )
-            return False
 
-    def stop_match(self, ID_white1: str, ID_black2: str) -> bool:
-        """stop a match record into UserMatch with updating the time_top attribute to the current time"""
+        log.error(
+            """There is already an ongoing match between the two players: %s and %s""",
+            id_white,
+            id_black,
+        )
+        return False
 
-        if not ID_white1 or not ID_black2:
-            log.error(f"Invalid parameters: {ID_white1}, {ID_black2}")
+    def stop_match(self, id_white: str, id_black: str) -> bool:
+        """stop a match record into UserMatch
+        by updating the time_top attribute to the current time"""
+
+        if not id_white or not id_black:
+            log.error("Invalid parameters: %s, %s", id_white, id_black)
             return False
 
         sql = """UPDATE UserMatch UM SET time_stop = NOW() WHERE ID_Match = %s"""
 
-        ongoing_match_id = self.get_active_match(ID_white1, ID_black2)
-        log.debug(f"Start_match.ongoing_match = {ongoing_match_id}")
+        ongoing_match_id = self.get_active_match(id_white, id_black)
+        log.debug("Start_match.ongoing_match = %s", ongoing_match_id)
 
         # check there is not an active game between the two players
         if ongoing_match_id is not None:
             self.cursor.execute(sql, (ongoing_match_id,))
             self.db.commit()
-            log.debug(f"Match stopped between {ID_white1} and {ID_black2}")
+            log.debug("Match stopped between %s and %s", id_white, id_black)
             return True
-        else:
-            log.error(
-                f"There is not an ongoing match between the two players: {ID_white1} and {ID_black2}"
-            )
-            return False
+        log.error(
+            "There is not an ongoing match between the two players: %s and %s",
+            id_white,
+            id_black,
+        )
+        return False
 
     def get_match_chessboard(self, match_id: str) -> str | None:
+        """Get the chessboard fen string stored in a UserMatch record"""
         if not match_id:
             log.error("Match_id cannot be empty")
             return None
@@ -173,10 +190,15 @@ class MatchesDB:
         chessboard_fen = self.cursor.fetchone()
 
         if not chessboard_fen:
-            log.error(f"Match not found: {match_id}")
+            log.error("Match not found: %s", match_id)
             return None
 
-        return chessboard_fen[0]
+        # Check that the database doesn't return a dict instead of a RowType
+        if not isinstance(chessboard_fen, tuple):
+            log.error("Some error occurred while fetching: chessboard_fen")
+            return None
+
+        return str(chessboard_fen[0])
 
     def add_move(self, match_id: str, move_uci: str) -> bool:
         """update chessboard attribute in the match with match_id to make a move"""
@@ -189,15 +211,19 @@ class MatchesDB:
 
         if chessboard_fen is None:
             log.error(
-                f"Cannot query chessboard_fen from: the match does not exist: {match_id}"
+                "Cannot query chessboard_fen from: the match does not exist: %s",
+                match_id,
             )
-            return
+            return False
 
         try:
             chessboard = chess.Board(fen=chessboard_fen)
             chessboard.push_uci(move_uci)
-        except Exception as err:
-            log.error(f"Cannot update chessboard: {err}")
+        except (chess.InvalidMoveError, chess.IllegalMoveError) as err:
+            log.error("Cannot update chessboard, the given move is invalid: %s ", err)
+            return False
+        except ValueError as err:
+            log.error("Cannot update chessboard: %s", err)
             return False
 
         update = "UPDATE UserMatch UM SET chessboard_fen = %s WHERE ID_Match = %s;"
@@ -205,13 +231,13 @@ class MatchesDB:
         try:
             self.cursor.execute(update, (chessboard.fen(), match_id))
             self.db.commit()
-            log.error(f"Match with ID:{match_id} updated successfully")
+            log.error("Match with ID:%s updated successfully", match_id)
             return True
         except mysql.connector.Error as err:
-            log.error(f"Cannot update chessboard: {err}")
+            log.error("Cannot update chessboard: %s", err)
             return False
 
-    def get_active_match(self, ID_user1: str, ID_user2: str) -> str | None:
+    def get_active_match(self, id_user1: str, id_user2: str) -> str | None:
         """gets the active match between two users, if one exists.
         Only one ongoing match (time_stop==NULL) should exist between two users"""
 
@@ -226,13 +252,19 @@ class MatchesDB:
             )
             AND UM.time_stop IS NULL;"""
 
-        self.cursor.execute(query, (ID_user1, ID_user2, ID_user2, ID_user1))
+        self.cursor.execute(query, (id_user1, id_user2, id_user2, id_user1))
         result = self.cursor.fetchone()
 
         if result is None:
             log.error(
-                f"No active match found between the specified users: {ID_user1}, {ID_user2}"
+                "No active match found between the specified users: %s, %s",
+                id_user1,
+                id_user2,
             )
+            return None
+
+        if not isinstance(result, tuple):
+            log.error("Some error occurred while fetching: active_match")
             return None
 
         return str(result[0])
@@ -253,10 +285,16 @@ class MatchesDB:
         self.cursor.execute("SET FOREIGN_KEY_CHECKS = 0")
 
         for table in tables:
+
+            # Check that the database doesn't return a dict instead of a RowType
+            if not isinstance(table, tuple):
+                log.error("Some error occurred while fetching: chessboard_fen")
+                return False
+
             try:
-                self.cursor.execute(table[0])
+                self.cursor.execute(str(table[0]))
             except mysql.connector.Error as err:
-                log.error(f"Cannot drop table {table[0]}: {err}")
+                log.error("Cannot drop table %s: %s", str(table[0]), err)
                 return False
 
         self.cursor.execute("SET FOREIGN_KEY_CHECKS = 1")
@@ -291,5 +329,5 @@ class MatchesDB:
             self.cursor.execute(user_match_table)
             return True
         except mysql.connector.Error as err:
-            log.error(f"Cannot setup database: {err}")
+            log.error("Cannot setup database: %s", err)
             return False
