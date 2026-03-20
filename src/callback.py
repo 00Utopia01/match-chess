@@ -33,19 +33,32 @@ def query3(temp):  # TEMP
 # Message >----------------------------
 
 
-async def euela_accept(query: CallbackQuery):
+async def handle_euela_accept(update: Update, _context: ContextTypes.DEFAULT_TYPE):
     """positive response to euela query"""
+    query = update.callback_query
+
+    if query is None:
+        return
+
+    await query.answer()
+
     await query.edit_message_text("You succesfully accepted EULA!")
-    return
 
 
-async def euela_decline(query: CallbackQuery):
+async def handle_euela_decline(update: Update, _context: ContextTypes.DEFAULT_TYPE):
     """negative response to euela query"""
     # here goes the logic that removes the user from the database
+
+    query = update.callback_query
+
+    if query is None:
+        return
+
+    await query.answer()
+
     await query.edit_message_text(
         "You refused EULA!\n Unfortunately you cannot utilize this bot",
     )
-    return
 
 
 # Logic >---------------------------
@@ -89,12 +102,9 @@ async def match_decline(query: CallbackQuery, context: ContextTypes.DEFAULT_TYPE
     return
 
 
-async def callback_finder(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """decide what callback to use"""
-
-    if context is None:  # for Pylint check
-        return
-
+async def handle_accept_match(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """handle method for commands.play.challenge_user InlineQueryButton,
+    where the user accepts the match request"""
     query = update.callback_query
 
     if query is None:
@@ -102,12 +112,41 @@ async def callback_finder(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     await query.answer()
 
-    match query.data:
-        case "euela accepted":
-            await euela_accept(query)
-        case "euela declined":
-            await euela_decline(query)
-        case "match accepted":
-            await match_accept(query, update, context)
-        case "match declined":
-            await match_decline(query, context)
+    if not context.match:
+        return
+
+    if not update.effective_user:
+        return
+
+    p1_id = context.match.group(1)
+    p2_id = update.effective_user.id
+
+    await context.bot.send_message(
+        chat_id=p1_id,
+        text=(f"Your challenge request has been refused by user: {p2_id}!"),
+    )
+
+
+async def handle_refuse_match(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """handle method for commands.play.challenge_user InlineQueryButton,
+    where the user accepts the match request"""
+    query = update.callback_query
+
+    if query is None:
+        return
+
+    await query.answer()
+
+    if not context.match:
+        return
+
+    if not update.effective_user:
+        return
+
+    p1_id = context.match.group(1)
+    p2_id = update.effective_user.id
+
+    await context.bot.send_message(
+        chat_id=p1_id,
+        text=(f"Your challenge request has been refused by user: {p2_id}!"),
+    )

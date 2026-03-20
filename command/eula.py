@@ -12,8 +12,8 @@ async def eula(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not update.effective_chat or not update.effective_user:
         return
 
-    accept_button = InlineKeyboardButton("I accept", callback_data="euela accepted")
-    refuse_button = InlineKeyboardButton("I refuse", callback_data="euela declined")
+    accept_button = InlineKeyboardButton("I accept", callback_data="usr:accept_eula")
+    refuse_button = InlineKeyboardButton("I decline", callback_data="usr:decline_teula")
 
     options_layout = [[accept_button, refuse_button]]
 

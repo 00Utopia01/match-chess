@@ -9,17 +9,12 @@ from telegram.ext import ContextTypes
 
 from src.chess_logic import matchmaking
 
-# from src.db_manager import DB
 
-
-# QUERY TEMP >---------------------------
-
-
-def query1(temp: str) -> bool:  # TEMP
-    """placeholder of a query"""
-    if temp:
-        return True
-    return False
+def get_username(user_id: str) -> str | None:  # TEMP
+    """get the username of a specified user"""
+    if user_id:
+        return "username"
+    return None
 
 
 def query2(temp: str) -> str:  # TEMP
@@ -47,7 +42,7 @@ def query4(temp, temp2):  # TEMP
 # Messages >---------------------------------
 
 
-async def self_match(update: Update):
+async def self_match_msg(update: Update):
     """message sent when self_match error occur"""
 
     if update.message is None:
@@ -57,7 +52,7 @@ async def self_match(update: Update):
     return
 
 
-async def no_user_db(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def no_user_db_msg(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """message sent when the user is not in the DB"""
 
     if update.effective_chat is None:
@@ -76,15 +71,23 @@ async def no_user_db(update: Update, context: ContextTypes.DEFAULT_TYPE):
     return
 
 
-async def match_request(
-    p2_id: str, mode: int, update: Update, context: ContextTypes.DEFAULT_TYPE
+async def match_request_msg(
+    p1_id: str,
+    p2_id: str,
+    mode: int,
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE,
 ):
     """message sent to request a match"""
     if update.effective_user is None:
         return
 
-    accept_button = InlineKeyboardButton("I accept", callback_data="match accepted")
-    refuse_button = InlineKeyboardButton("I refuse", callback_data="match declined")
+    accept_button = InlineKeyboardButton(
+        "I accept", callback_data=f"usr:accept_match_{p1_id}"
+    )
+    refuse_button = InlineKeyboardButton(
+        "I refuse", callback_data=f"usr:refuse_match_{p1_id}"
+    )
 
     options_layout = [[accept_button, refuse_button]]
 
@@ -105,55 +108,7 @@ async def match_request(
     )
 
 
-# Logic >-------------------------------------------
-
-
-async def custom_match(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Sends an invite to an user with the corresponding ID"""
-
-    if context.args is None or update.effective_user is None:
-        return
-
-    if update.message is None or update.effective_chat is None:
-        return
-
-    if context.args[0] == update.effective_user.name:
-        await self_match(update)
-        return
-
-    if not query1(context.args[0]):  # TEMP
-        await no_user_db(update, context)
-        return
-
-    p2_id = query3(context.args[0])  # TEMP
-
-    p1_is_white = bool(randint(0, 1))
-    mode = 0
-
-    print(context.args)
-
-    if len(context.args) == 2 and context.args[1] == ("-w" or "-W"):
-        p1_is_white = True
-        mode = 1
-    elif len(context.args) == 2 and context.args[1] == ("-b" or "-B"):
-        p1_is_white = False
-        mode = 2
-    else:
-        return
-
-    if p1_is_white:
-        query4(update.effective_user.id, p2_id)
-    else:
-        query4(p2_id, update.effective_user.id)
-
-        print(mode)
-
-    await match_request(p2_id, mode, update, context)
-
-    return
-
-
-async def online(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def play_matchmaking(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """create a match vs random player online"""
     if not context:  # TEMP
         return  # TEMP
@@ -175,12 +130,68 @@ async def play(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not update.message or not update.effective_user:
         return
 
-    if context.args is None:  # check
-        await online(update, context)
+    if context.args is None:
+        await play_matchmaking(update, context)
         return
 
     if len(context.args) >= 1:
-        await custom_match(update, context)
+        await challenge_user(update, context)
         return
 
     return
+
+
+async def challenge_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """make a player (p1) send a challenge request to the user with the specified id (p2)
+    the challenged user will receive a message with an identifier of the user who sent the challenge
+    and two buttons to accept/decline the request
+
+    Syntax: /challenge_user <user_id> [-w | -W | -b | -B]
+
+    Args:
+        user_id : the number associated with each player when they send /start
+        [-w | -W] (optional): send a request where you play as white
+        [-b | -B] (optional): send a request where you play as black
+
+    Note:
+        If the user doesn't specifies [-w | -W | -b | -B] a random side is chosen
+    """
+
+    if context.args is None or update.effective_user is None:
+        return
+
+    if update.message is None or update.effective_chat is None:
+        return
+
+    p2_id = context.args[0]
+
+    if p2_id == update.effective_user.name:
+        await self_match_msg(update)
+        return
+
+    p2_username = get_username(context.args[0])
+
+    # If the user to challenge is not found in the database send error message
+    if not p2_username:
+        await no_user_db_msg(update, context)
+        return
+
+    # Decide which player starts with white pieces
+    p1_is_white = bool(randint(0, 1))
+
+    if len(context.args) > 2 and context.args[1] == ("-w" or "-W"):
+        p1_is_white = True
+    elif len(context.args) > 2 and context.args[1] == ("-b" or "-B"):
+        p1_is_white = False
+
+    mode = 1 if p1_is_white else 2
+
+    await match_request_msg(
+        p1_id=str(update.effective_user.id),
+        p2_id=p2_id,
+        mode=mode,
+        update=update,
+        context=context,
+    )
+
+    return None
