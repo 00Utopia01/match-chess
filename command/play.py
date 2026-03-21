@@ -3,11 +3,11 @@
 from random import randint
 
 from telegram import CopyTextButton, InlineKeyboardButton, InlineKeyboardMarkup, Update
-
-# from telegram.error import BadRequest, TelegramError
 from telegram.ext import ContextTypes
 
 from src.chess_logic import matchmaking
+
+# from telegram.error import BadRequest, TelegramError
 
 
 def get_username(user_id: str) -> str | None:  # TEMP

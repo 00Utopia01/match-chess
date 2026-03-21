@@ -6,8 +6,8 @@ import chess
 import mysql.connector
 from mysql.connector import errorcode
 
-from src.logger import LOGGER as log
 from src.env import ENV as env
+from src.logger import LOGGER as log
 
 
 class MatchesDB:
@@ -333,9 +333,10 @@ class MatchesDB:
             log.error("Cannot setup database: %s", err)
             return False
 
+
 DB = MatchesDB(
     user=env.get_user(),
     host=env.get_host(),
     password=env.get_password(),
-    database=env.get_database()
-    )
+    database=env.get_database(),
+)

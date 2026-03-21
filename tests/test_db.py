@@ -1,4 +1,8 @@
+"""Test the database"""
+
+
 def test_insert_and_get_user(empty_db):
+    """WIP"""
     # Test insertion
     assert empty_db.insert_user("123", "test_username") is True
 
@@ -8,6 +12,7 @@ def test_insert_and_get_user(empty_db):
 
 
 def test_get_username(empty_db):
+    """WIP"""
     empty_db.insert_user("123", "test_username")
 
     username = empty_db.get_username("123")
