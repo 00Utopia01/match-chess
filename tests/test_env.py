@@ -5,68 +5,98 @@ from pytest_mock import MockerFixture
 
 from src import env
 
-tokens = [
+
+test_tokens = [
+    (None, False),
     ("", False),
     ("test123", False),
     ("12345678:abcdefghijklmnopqrstuvwxyz01_345-78", True),
 ]
 
 
-@pytest.mark.parametrize("token, validation", tokens)
+@pytest.mark.parametrize("token, validation", test_tokens)
 def test_check_token(token: str, validation: bool):
-    """test if a token is in a valid format"""
+    """test if a token is None or in a valid format"""
     assert env.check_token(token) == validation
 
+@pytest.fixture(autouse=True)
+def clear_global():
+    """reset all the global variable in .env to None"""
+    env.TG_TOKEN = None
+    env.DB_USER = None
+    env.DB_HOST = None
+    env.DB_PASSWORD = None
+    env.DB_DATABASE = None
+    yield
 
-def test_get_token_success(mocker: MockerFixture, monkeypatch):
-    """see if this function takes the token in the environment"""
-    # fake the environment variable
-    monkeypatch.setenv("TELEGRAM_TOKEN", "test-token")
-    mocker.patch.object(env, "load_dotenv", return_value=True)
+def test_setup_file_missing(mocker: MockerFixture):
+    """test if setup() cannot find a .env file"""
 
-    assert env.get_token() == "test-token"
+    mocker.patch("src.env.load_dotenv", return_value=False)
+    mocker.patch("os.getenv", return_value=None)
+
+    with pytest.raises(SystemExit) as exit:
+        env.setup()
+    
+    assert exit.value.code == 1
+    assert env.TG_TOKEN == None
+    assert env.DB_USER == None
+    assert env.DB_HOST == None
+    assert env.DB_PASSWORD == None
+    assert env.DB_DATABASE == None
+
+test_variable=[
+    (["token", None, None, None, None], True),
+    ([None, "user", None, None, None], True),
+    ([None, None, "host", None, None], True),
+    ([None, None, None, "psw", None], True),
+    ([None, None, None, None, "name"], True),
+    (["token", None, None, None, None], False),
+    ([None, "user", None, None, None], False),
+    ([None, None, "host", None, None], False),
+    ([None, None, None, "psw", None], False),
+    ([None, None, None, None, "name"], False)
+]
+@pytest.mark.parametrize("_env, is_correct", test_variable)
+def test_setup_missing_variables(
+    _env:list[str | None], 
+    is_correct: bool,
+    mocker: MockerFixture,
+    ):
+    """test if setup() cannot find DB variable"""
+    mocker.patch("src.env.load_dotenv", return_value=True)
+    mocker.patch("src.env.check_token", return_value=is_correct)
+
+    mocker.patch("os.getenv", side_effect=_env)
+
+    with pytest.raises(SystemExit) as exit:
+        env.setup()
+    
+    assert exit.value.code == 1
+    assert env.TG_TOKEN == _env[0]
+    assert env.DB_USER == _env[1]
+    assert env.DB_HOST == _env[2]
+    assert env.DB_PASSWORD == _env[3]
+    assert env.DB_DATABASE == _env[4]
 
 
-def test_get_token_failure(mocker: MockerFixture, monkeypatch):
-    """assure that if the token is missing it returns empty string"""
-    # assure that there is no token
-    monkeypatch.setenv("TELEGRAM_TOKEN", "test-token")
-    monkeypatch.delenv("TELEGRAM_TOKEN", "test-token")
+test_env = ["token", "user", "host", "psw", "name"]
+def test_setup_succes(mocker: MockerFixture):
+    """test setup() with correct parameters"""
 
-    mocker.patch.object(env, "load_dotenv", return_value=True)
-    assert env.get_token() is None
+    mocker.patch("src.env.load_dotenv", return_value=True)
+    mocker.patch("src.env.check_token", return_value=True)
 
+    mocker.patch("os.getenv", side_effect=test_env)
 
-def test_set_path_exists(mocker: MockerFixture):
-    """if the .env exists is returned"""
-    mocker.patch("os.path.exists", return_value=True)
-    mocker.patch.object(env, "take_path_input", return_value=".env")
+    env.setup()
 
-    path = env.set_path()
-
-    assert path == ".env"
+    assert env.TG_TOKEN == "token"
+    assert env.DB_USER == "user"
+    assert env.DB_HOST == "host"
+    assert env.DB_PASSWORD == "psw"
+    assert env.DB_DATABASE == "name"
 
 
-def test_set_path_not_exists_1(mocker: MockerFixture):
-    """if .env doens't exist the user inputs a wrong path, then user inputs a correct path"""
-    mocker.patch("os.path.exists", return_value=False)
-
-    mocker.patch("builtins.print", return_value="correct-path/.env")
-    mocker.patch.object(
-        env, "take_path_input", side_effect=["wrongpath", "correct-path/.env"]
-    )
-    mock_print = mocker.patch("builtins.print")
-
-    result = env.set_path()
-
-    # Assertions
-    mock_print.assert_any_call(
-        "The specified path does not end with a .env file, retry"
-    )
-    assert result == "correct-path/.env"
 
 
-def test_take_path_input(mocker: MockerFixture):
-    """take file path input for .env"""
-    mocker.patch("builtins.input", return_value="test")
-    assert env.take_path_input() == "test"
