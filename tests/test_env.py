@@ -19,31 +19,20 @@ def test_check_token(token: str, validation: bool):
     """test if a token is None or in a valid format"""
     assert env.check_token(token) == validation
 
-@pytest.fixture(autouse=True)
-def clear_global():
-    """reset all the global variable in .env to None"""
-    env.TG_TOKEN = None
-    env.DB_USER = None
-    env.DB_HOST = None
-    env.DB_PASSWORD = None
-    env.DB_DATABASE = None
-    yield
-
 def test_setup_file_missing(mocker: MockerFixture):
     """test if setup() cannot find a .env file"""
 
     mocker.patch("src.env.load_dotenv", return_value=False)
     mocker.patch("os.getenv", return_value=None)
 
+    env_result = None
+
     with pytest.raises(SystemExit) as exit:
-        env.setup()
+        env_result = env.setup()
     
     assert exit.value.code == 1
-    assert env.TG_TOKEN == None
-    assert env.DB_USER == None
-    assert env.DB_HOST == None
-    assert env.DB_PASSWORD == None
-    assert env.DB_DATABASE == None
+    assert env_result is None
+
 
 test_variable=[
     (["token", None, None, None, None], True),
@@ -69,15 +58,12 @@ def test_setup_missing_variables(
 
     mocker.patch("os.getenv", side_effect=_env)
 
+    env_result = None
     with pytest.raises(SystemExit) as exit:
-        env.setup()
+        env_result = env.setup()
     
     assert exit.value.code == 1
-    assert env.TG_TOKEN == _env[0]
-    assert env.DB_USER == _env[1]
-    assert env.DB_HOST == _env[2]
-    assert env.DB_PASSWORD == _env[3]
-    assert env.DB_DATABASE == _env[4]
+    assert env_result is None
 
 
 test_env = ["token", "user", "host", "psw", "name"]
@@ -89,13 +75,14 @@ def test_setup_succes(mocker: MockerFixture):
 
     mocker.patch("os.getenv", side_effect=test_env)
 
-    env.setup()
+    env_result = None
+    env_result = env.setup()
 
-    assert env.TG_TOKEN == "token"
-    assert env.DB_USER == "user"
-    assert env.DB_HOST == "host"
-    assert env.DB_PASSWORD == "psw"
-    assert env.DB_DATABASE == "name"
+    assert env_result.TG_TOKEN == "token"
+    assert env_result.DB_USER == "user"
+    assert env_result.DB_HOST == "host"
+    assert env_result.DB_PASSWORD == "psw"
+    assert env_result.DB_DATABASE == "name"
 
 
 

@@ -7,7 +7,7 @@ import mysql.connector
 from mysql.connector import errorcode
 
 from src.logger import LOGGER as log
-from src.env import DB_USER, DB_HOST, DB_PASSWORD, DB_DATABASE
+from src.env import ENV as env
 
 
 class MatchesDB:
@@ -334,8 +334,8 @@ class MatchesDB:
             return False
 
 DB = MatchesDB(
-    user=DB_USER,
-    host=DB_HOST,
-    password=DB_PASSWORD,
-    database=DB_DATABASE
+    user=env.DB_USER,
+    host=env.DB_HOST,
+    password=env.DB_PASSWORD,
+    database=env.DB_DATABASE
     )

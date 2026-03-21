@@ -10,12 +10,14 @@ from dotenv import load_dotenv
 
 from src.logger import LOGGER as log
 
+class Env:
+    def __initi__(self):
+        self.TG_TOKEN:str | None = None
+        self.DB_USER:str | None = None
+        self.DB_HOST:str | None = None
+        self.DB_PASSWORD:str | None = None
+        self.DB_DATABASE:str | None= None
 
-TG_TOKEN = None
-DB_USER = None
-DB_HOST = None
-DB_PASSWORD = None
-DB_DATABASE = None
 
 def check_token(token: str | None) -> bool:
     """chek if token is None or in a wrong format"""
@@ -24,7 +26,7 @@ def check_token(token: str | None) -> bool:
     if token is None:
         log.critical("No TOKEN found in env variables (could be empty)")
         return False
-    
+
     if re.fullmatch(regex_const, token) is None:
         log.critical("Invalid TOKEN formatting")
         return False
@@ -32,10 +34,10 @@ def check_token(token: str | None) -> bool:
     return True
 
 
-def setup():
+def setup() -> Env:
     """Load all env variables"""
 
-    global TG_TOKEN, DB_USER, DB_HOST, DB_PASSWORD, DB_DATABASE
+    env = Env()
     is_bootable = True
 
     log.info("Loading env variables...")
@@ -45,32 +47,34 @@ def setup():
         sys.exit(1)
 
 
-    TG_TOKEN = os.getenv("TELEGRAM_TOKEN")
-    DB_USER = os.getenv("DB_USER")
-    DB_HOST = os.getenv("DB_HOST")
-    DB_PASSWORD = os.getenv("DB_PASSWORD")
-    DB_DATABASE = os.getenv("DB_DATABASE")
+    env.TG_TOKEN = os.getenv("TELEGRAM_TOKEN")
+    env.DB_USER = os.getenv("DB_USER")
+    env.DB_HOST = os.getenv("DB_HOST")
+    env.DB_PASSWORD = os.getenv("DB_PASSWORD")
+    env.DB_DATABASE = os.getenv("DB_DATABASE")
 
-    if not check_token(TG_TOKEN):
+    if not check_token(env.TG_TOKEN):
         is_bootable = False
-    
-    if DB_USER is None:
+
+    if env.DB_USER is None:
         log.critical("No DB_USER found in env variables (could be empty)")
         is_bootable = False
 
-    if DB_HOST is None:
+    if env.DB_HOST is None:
         log.critical("No DB_HOST found in env variables (could be empty)")
         is_bootable = False
-    
-    if DB_PASSWORD is None:
+
+    if env.DB_PASSWORD is None:
         log.critical("No DB_PASSWORD found in env variables (could be empty)")
         is_bootable = False
-    
-    if DB_DATABASE is None:
+
+    if env.DB_DATABASE is None:
         log.critical("No DB_DATABASE found in env variables (could be empty)")
         is_bootable = False
-    
-    if not is_bootable:
-        sys.exit(1)
 
-setup()
+    if not is_bootable:
+        del env
+        sys.exit(1)
+    return env
+
+ENV = setup()
