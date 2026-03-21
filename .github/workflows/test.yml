@@ -11,14 +11,24 @@ on:
     paths-ignore:
       - "README.md"
       - "docs/**"
-env:
-  TELEGRAM-TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+
 
 jobs:
   test:
     runs-on: ubuntu-latest
 
+    env:
+      TELEGRAM-TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+      DB_DATABASE: test_db
+      DB_USER: root
+      DB_PASSWORD: root
+      DB_HOST: localhost
+
     steps:
+      - name: Set up MySQL
+        run: |
+          sudo systemctl start mysql.service
+          mysql -e 'CREATE DATABASE ${{ env.DB_DATABASE }};' -u${{ env.DB_USER }} -p${{ env.DB_PASSWORD }}
       - uses: actions/checkout@v6
       - name: Set up Python 3.14
         uses: actions/setup-python@v6

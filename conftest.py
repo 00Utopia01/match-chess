@@ -27,7 +27,7 @@ def db_conn():
     yield db
 
     # Close the connection to the server
-    db.close()
+    db.close_connection()
 
 
 # pylint: disable=redefined-outer-name
@@ -36,8 +36,9 @@ def db_conn():
 @pytest.fixture(scope="function")
 def empty_db(db_conn):
     """Setup the database in order to execute tests on it by dropping every record"""
-    db_conn.cursor.execute("SET FOREIGN_KEY_CHECKS = 0")
-    db_conn.cursor.execute("TRUNCATE TABLE UserMatch")
-    db_conn.cursor.execute("TRUNCATE TABLE User")
-    db_conn.cursor.execute("SET FOREIGN_KEY_CHECKS = 1")
+    with db_conn.db.cursor() as cursor:
+        cursor.execute("SET FOREIGN_KEY_CHECKS = 0")
+        cursor.execute("TRUNCATE TABLE UserMatch")
+        cursor.execute("TRUNCATE TABLE User")
+        cursor.execute("SET FOREIGN_KEY_CHECKS = 1")
     return db_conn
