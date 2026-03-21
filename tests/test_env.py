@@ -78,11 +78,11 @@ def test_setup_succes(mocker: MockerFixture):
     env_result = None
     env_result = env.setup()
 
-    assert env_result.TG_TOKEN == "token"
-    assert env_result.DB_USER == "user"
-    assert env_result.DB_HOST == "host"
-    assert env_result.DB_PASSWORD == "psw"
-    assert env_result.DB_DATABASE == "name"
+    assert env_result.get_token() == "token"
+    assert env_result.get_user() == "user"
+    assert env_result.get_host() == "host"
+    assert env_result.get_password() == "psw"
+    assert env_result.get_database() == "name"
 
 
 

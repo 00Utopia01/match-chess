@@ -32,7 +32,7 @@ if __name__ == "__main__":
 
     log.info("Starting...")
 
-    application = ApplicationBuilder().token(env.TG_TOKEN).build()
+    application = ApplicationBuilder().token(env.get_token()).build()
 
     # Bot Commands >----------------------------------
     commands_list_handler = CommandHandler("help", help_command)

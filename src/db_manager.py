@@ -334,8 +334,8 @@ class MatchesDB:
             return False
 
 DB = MatchesDB(
-    user=env.DB_USER,
-    host=env.DB_HOST,
-    password=env.DB_PASSWORD,
-    database=env.DB_DATABASE
+    user=env.get_user(),
+    host=env.get_host(),
+    password=env.get_password(),
+    database=env.get_database()
     )
