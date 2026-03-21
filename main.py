@@ -19,7 +19,7 @@ from command.eula import eula
 from command.help import command_list as help_command
 from command.play import challenge_user, play
 from command.start import start
-from src import env
+from src.env import TG_TOKEN
 from src.callback import (
     handle_accept_match,
     handle_euela_accept,
@@ -30,23 +30,9 @@ from src.logger import LOGGER as log
 
 if __name__ == "__main__":
 
-    log.info("------------------- Fresh Start -------------------")
-
-    # Token setup >--------------------------------
-
-    log.info("Loading Token...")
-
-    TOKEN = env.get_token()
-    if TOKEN is None or not env.check_token(TOKEN):
-        sys.exit(1)
-    else:
-        log.info("Setting telegram bot token...")
-
-    # Bot Application setup >--------------------------------
-
     log.info("Starting...")
 
-    application = ApplicationBuilder().token(TOKEN).build()
+    application = ApplicationBuilder().token(TG_TOKEN).build()
 
     # Bot Commands >----------------------------------
     commands_list_handler = CommandHandler("help", help_command)

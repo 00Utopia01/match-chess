@@ -7,6 +7,7 @@ import mysql.connector
 from mysql.connector import errorcode
 
 from src.logger import LOGGER as log
+from src.env import DB_USER, DB_HOST, DB_PASSWORD, DB_DATABASE
 
 
 class MatchesDB:
@@ -331,3 +332,10 @@ class MatchesDB:
         except mysql.connector.Error as err:
             log.error("Cannot setup database: %s", err)
             return False
+
+DB = MatchesDB(
+    user=DB_USER,
+    host=DB_HOST,
+    password=DB_PASSWORD,
+    database=DB_DATABASE
+    )

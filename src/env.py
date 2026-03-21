@@ -4,60 +4,73 @@ This module hendle .env loading and reading
 
 import os
 import re
+import sys
 
 from dotenv import load_dotenv
 
 from src.logger import LOGGER as log
 
 
-def take_path_input():
-    """get input path for .env file"""
-    return input("direct path to file: ")
-
-
-def set_path() -> str:
-    """return the path for .env file"""
-
-    while True:
-        path = take_path_input()
-        if path[-4:] == ".env":
-            log.debug('custom path is "%s"', path)
-            break
-
-        print("The specified path does not end with a .env file, retry")
-    return path
-
-
-def get_token() -> str | None:
-    """get token from .env file or environment variable"""
-
-    token = os.getenv("TELEGRAM_TOKEN")
-
-    if token is not None:
-        return token
-
-    # log.error("TELEGRAM_TOKEN variable not found or empty")
-
-    # try to find .env file
-    if not load_dotenv():
-        log.error(
-            "No .env file in default path (could be empty), overriding with custom path "
-        )
-        # if .env cannot be found, ask the user to input .env path
-        if not load_dotenv(dotenv_path=set_path()):
-            log.critical("No '.env' file found in custom path (could be empty)")
-            return None
-
-    token = os.getenv("TELEGRAM_TOKEN")
-    return token
-
+TG_TOKEN = None
+DB_USER = None
+DB_HOST = None
+DB_PASSWORD = None
+DB_DATABASE = None
 
 def check_token(token: str | None) -> bool:
     """chek if token is None or in a wrong format"""
     regex_const = "^[0-9]{8,10}:[a-zA-Z0-9_-]{35}$"
 
-    if token is None or re.fullmatch(regex_const, token) is None:
-        log.critical("Invalid token formatting")
+    if token is None:
+        log.critical("No TOKEN found in env variables (could be empty)")
+        return False
+    
+    if re.fullmatch(regex_const, token) is None:
+        log.critical("Invalid TOKEN formatting")
         return False
 
     return True
+
+
+def setup():
+    """Load all env variables"""
+
+    global TG_TOKEN, DB_USER, DB_HOST, DB_PASSWORD, DB_DATABASE
+    is_bootable = True
+
+    log.info("Loading env variables...")
+
+    if not load_dotenv():
+        log.critical("No .env file found (could be in a sub directory)")
+        sys.exit(1)
+
+
+    TG_TOKEN = os.getenv("TELEGRAM_TOKEN")
+    DB_USER = os.getenv("DB_USER")
+    DB_HOST = os.getenv("DB_HOST")
+    DB_PASSWORD = os.getenv("DB_PASSWORD")
+    DB_DATABASE = os.getenv("DB_DATABASE")
+
+    if not check_token(TG_TOKEN):
+        is_bootable = False
+    
+    if DB_USER is None:
+        log.critical("No DB_USER found in env variables (could be empty)")
+        is_bootable = False
+
+    if DB_HOST is None:
+        log.critical("No DB_HOST found in env variables (could be empty)")
+        is_bootable = False
+    
+    if DB_PASSWORD is None:
+        log.critical("No DB_PASSWORD found in env variables (could be empty)")
+        is_bootable = False
+    
+    if DB_DATABASE is None:
+        log.critical("No DB_DATABASE found in env variables (could be empty)")
+        is_bootable = False
+    
+    if not is_bootable:
+        sys.exit(1)
+
+setup()
