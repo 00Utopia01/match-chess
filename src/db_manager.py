@@ -110,11 +110,16 @@ class MatchesDB:
             cursor.execute(query, (user_id,))
             result = cursor.fetchone()
 
-            if result and isinstance(result, tuple):
-                # result is typically a tuple like ('JohnDoe',)
-                return str(result[0])
-            log.error("User_id: %s not found in database", user_id)
-            return None
+            if not result:
+                log.error("User_id: %s not found in database", user_id)
+                return None
+
+            # Check that the database doesn't return a dict instead of a RowType
+            if not isinstance(result, tuple):
+                log.error("Some error occurred while fetching: %s", user_id)
+                return None
+
+            return str(result[0])
 
     def get_user_id(self, username: str) -> str | None:
         """Fetches the user_id for a given username on the database."""
@@ -126,25 +131,25 @@ class MatchesDB:
             cursor.execute(query, (username,))
             result = cursor.fetchone()
 
+            if not result:
+                log.error("Username: %s not found in database", username)
+                return None
+
             # Check that the database doesn't return a dict instead of a RowType
             if not isinstance(result, tuple):
                 log.error("Some error occurred while fetching: %s", username)
                 return None
 
-            if result:
-                # result is typically a tuple like ('JohnDoe',)
-                return str(result[0])
-            log.error("User_id: %s not found in database", username)
-            return None
+            return str(result[0])
 
-    def show_table(self, table_name: str):
+    def show_table(self, table_name: str) -> bool:
         """select * on a specified table"""
         self.ensure_connection()
 
         print(f"Printing table {table_name}...")
         if not table_name:
             log.error("Tablename is empty")
-            return
+            return False
 
         query = f"SELECT * FROM {table_name}"
 
@@ -154,13 +159,14 @@ class MatchesDB:
                 records = cursor.fetchall()
                 for record in records:
                     print(record)
+                return True
         except mysql.connector.Error as err:
             if err.errno == errorcode.ER_NO_SUCH_TABLE:
                 log.error("No such table %s", table_name)
             else:
                 log.error("Database raised an exception while querying, %s", err)
 
-            return
+            return False
 
     def start_match(self, id_white: str, id_black: str) -> bool:
         """insert a match record into UserMatch"""
@@ -170,23 +176,27 @@ class MatchesDB:
             log.error("Invalid parameters: %s, %s", id_white, id_black)
             return False
 
-        sql = """
-            INSERT INTO UserMatch (white_user1, black_user2,time_start,time_stop,chessboard_fen)
-            VALUES (%s, %s, NOW(), NULL, %s)"""
-
-        chessboard = chess.Board()
+        if not id_white.isdigit() or not id_black.isdigit():
+            log.error("Invalid parameters: %s, %s", id_white, id_black)
+            return False
 
         ongoing_match_id = self.get_active_match(id_white, id_black)
         log.debug("Start_match.ongoing_match = %s", ongoing_match_id)
 
         # check there is not an active game between the two players
-        if ongoing_match_id is None:
+        if ongoing_match_id is not None:
             log.error(
                 """There is already an ongoing match between the two players: %s and %s""",
                 id_white,
                 id_black,
             )
             return False
+
+        sql = """
+            INSERT INTO UserMatch (white_user1, black_user2,time_start,time_stop,chessboard_fen)
+            VALUES (%s, %s, NOW(), NULL, %s)"""
+
+        chessboard = chess.Board()
 
         try:
             with self.db.cursor() as cursor:
@@ -198,6 +208,35 @@ class MatchesDB:
         except mysql.connector.Error as err:
             log.error("A database error occurred while starting match: %s", err)
             return False
+
+    def get_match_data(self, id_white: str, id_black: str) -> list[tuple] | None:
+        """Get a list containing all the match records between two users ordered from the latest to the oldest:
+        (
+        [ID_Match, white_user1, black_user2, time_start, time_stop, chessboard_fen]
+        )
+
+        """
+
+        query = "SELECT ID_Match, white_user1, black_user2, time_start, time_stop, chessboard_fen FROM UserMatch ORDER BY time_start DESC"
+
+        try:
+            with self.db.cursor() as cursor:
+                cursor.execute(query)
+                records = cursor.fetchall()
+
+                # Check that the database doesn't return a dict instead of a RowType
+                if not isinstance(records, list):
+                    log.error(
+                        "Some error occurred while fetching match: %s, %s",
+                        id_white,
+                        id_black,
+                    )
+                    return None
+
+                return records
+        except mysql.connector.Error as err:
+            log.error("A database error occurred while querying match data: %s", err)
+            return None
 
     def stop_match(
         self,
@@ -327,23 +366,27 @@ class MatchesDB:
             )
             AND UM.time_stop IS NULL;"""
 
-        with self.db.cursor() as cursor:
-            cursor.execute(query, (id_user1, id_user2, id_user2, id_user1))
-            result = cursor.fetchone()
+        try:
+            with self.db.cursor() as cursor:
+                cursor.execute(query, (id_user1, id_user2, id_user2, id_user1))
+                result = cursor.fetchone()
 
-            if result is None:
-                log.error(
-                    "No active match found between the specified users: %s, %s",
-                    id_user1,
-                    id_user2,
-                )
-                return None
+                if result is None:
+                    log.error(
+                        "No active match found between the specified users: %s, %s",
+                        id_user1,
+                        id_user2,
+                    )
+                    return None
 
-            if not isinstance(result, tuple):
-                log.error("Some error occurred while fetching: active_match")
-                return None
+                if not isinstance(result, tuple):
+                    log.error("Some error occurred while fetching: active_match")
+                    return None
 
-            return str(result[0])
+                return str(result[0])
+        except mysql.connector.Error as err:
+            log.error("A database error occurred while querying active match: %s", err)
+            return None
 
     def drop_all_tables(self) -> bool:
         """drop all tables on the database"""
