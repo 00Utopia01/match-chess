@@ -13,7 +13,7 @@ async def eula(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     accept_button = InlineKeyboardButton("I accept", callback_data="usr:accept_eula")
-    refuse_button = InlineKeyboardButton("I decline", callback_data="usr:decline_teula")
+    refuse_button = InlineKeyboardButton("I decline", callback_data="usr:decline_eula")
 
     options_layout = [[accept_button, refuse_button]]
 
@@ -25,12 +25,13 @@ async def eula(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "By starting and using this Telegram Bot,"
             " you agree to the following terms and conditions.\n"
             "we need to collect and store some basic information from your Telegram profile.\n"
-            "\nWhat we collect?\n"
-            "We only collect your Telegram user_id and your username.\n"
+            "\n<b>What we collect?</b>\n"
+            "We only collect your Telegram <i>user_id</i> and your <i>username</i>.\n"
             "This data is strictly used to identify you in our database, "
             "pair you with other players for matchmaking and maintain leaderboards.\n"
             "We do not sell, rent, or share your personal data with any third parties. "
-            " Your data remains within the bot's secure database."
+            "Your data remains within the bot's secure database."
         ),
+        parse_mode="HTML",
         reply_markup=button_interface,
     )
