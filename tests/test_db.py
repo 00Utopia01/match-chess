@@ -224,12 +224,14 @@ def test_get_user_id_wrong_type(empty_db, mocker: MockerFixture):
 
 
 def test_show_table_success(empty_db):
+    """Test show_table"""
     result = empty_db.show_table("User")
 
     assert result is True
 
 
 def test_show_table_empty_tablename(empty_db, mocker: MockerFixture):
+    """Try to pass an empty string to show_table"""
     mock_log = mocker.patch("src.db_manager.log")
 
     result = empty_db.show_table("")
@@ -239,6 +241,7 @@ def test_show_table_empty_tablename(empty_db, mocker: MockerFixture):
 
 
 def test_show_table_no_table(empty_db, mocker: MockerFixture):
+    """Try to show a non existent table"""
     mock_log = mocker.patch("src.db_manager.log")
 
     result = empty_db.show_table("Test_table")
@@ -256,6 +259,7 @@ parameters = [
 
 @pytest.mark.parametrize("param", parameters)
 def test_start_match_parameters(empty_db, param):
+    """Pass wrong parameters to start_match"""
     # Insert the users in User to avoid the foreing key constraint on UserMatch
     empty_db.insert_user(param["id_white"], "usr1")
     empty_db.insert_user(param["id_black"], "usr2")
@@ -267,6 +271,7 @@ def test_start_match_parameters(empty_db, param):
 
 
 def test_start_match_ongoing_match(empty_db, mocker: MockerFixture):
+    """Try to start a match when there is already an ongoing match"""
     mock_log = mocker.patch("src.db_manager.log")
 
     # Start an active match between two users
@@ -286,6 +291,7 @@ def test_start_match_ongoing_match(empty_db, mocker: MockerFixture):
 
 
 def test_start_match_error(empty_db, mocker: MockerFixture):
+    """Raise an error while starting a match"""
     empty_db.insert_user("123", "usr1")
     empty_db.insert_user("1234", "usr2")
 
@@ -307,14 +313,15 @@ def test_start_match_error(empty_db, mocker: MockerFixture):
     )
 
 
-def test_get_match_data(empty_db):
+def test_get_matches(empty_db):
+    """Query two matches between two users"""
     empty_db.insert_user("123", "usr1")
     empty_db.insert_user("1234", "usr2")
     empty_db.start_match("123", "1234")
     empty_db.insert_user("12345", "usr3")
     empty_db.start_match("123", "12345")
 
-    matches_list = empty_db.get_match_data("123", "1234")
+    matches_list = empty_db.get_matches("123", "1234")
 
     assert str(matches_list[0][1]) == "123"
     assert str(matches_list[0][2]) == "1234"
@@ -322,7 +329,8 @@ def test_get_match_data(empty_db):
     assert str(matches_list[1][2]) == "12345"
 
 
-def test_get_match_data_wrong_type(empty_db, mocker: MockerFixture):
+def test_get_matches_wrong_type(empty_db, mocker: MockerFixture):
+    """Handle dict return type"""
     mock_log = mocker.patch("src.db_manager.log")
     empty_db.insert_user("123", "usr1")
     empty_db.insert_user("1234", "usr2")
@@ -333,38 +341,42 @@ def test_get_match_data_wrong_type(empty_db, mocker: MockerFixture):
     mock_cursor_func = mocker.patch.object(empty_db.db, "cursor")
     mock_cursor_func.return_value.__enter__.return_value = mock_cursor
 
-    matches_list = empty_db.get_match_data("123", "1234")
+    matches_list = empty_db.get_matches("123", "1234")
 
     assert matches_list is None
     mock_log.error.assert_called_with(
         "Some error occurred while fetching match: %s, %s", "123", "1234"
     )
 
-def test_get_match_data_error(empty_db, mocker: MockerFixture):
+
+def test_get_matches_error(empty_db, mocker: MockerFixture):
+    """Raise an error while querying matches"""
     mock_log = mocker.patch("src.db_manager.log")
     empty_db.insert_user("123", "usr1")
     empty_db.insert_user("1234", "usr2")
     empty_db.start_match("123", "1234")
-    
+
     err = Error()
     mock_cursor = mocker.MagicMock()
     mock_cursor.execute.side_effect = err
     mock_cursor_func = mocker.patch.object(empty_db.db, "cursor")
     mock_cursor_func.return_value.__enter__.return_value = mock_cursor
 
-    matches_list = empty_db.get_match_data("123", "1234")
+    matches_list = empty_db.get_matches("123", "1234")
 
     assert matches_list is None
     mock_log.error.assert_called_with(
         "A database error occurred while querying match data: %s", err
     )
 
+
 def test_get_active_match(empty_db):
+    """Get the active match between two users"""
     empty_db.insert_user("123", "usr1")
     empty_db.insert_user("1234", "usr2")
 
     active_match_id1 = empty_db.get_active_match("123", "1234")
-    
+
     empty_db.start_match("123", "1234")
 
     active_match_id2 = empty_db.get_active_match("123", "1234")
@@ -372,7 +384,9 @@ def test_get_active_match(empty_db):
     assert active_match_id1 is None
     assert active_match_id2 is not None
 
+
 def test_get_active_match_error(empty_db, mocker: MockerFixture):
+    """Raise an error while querying active match"""
     mock_log = mocker.patch("src.db_manager.log")
 
     err = Error()
@@ -384,9 +398,13 @@ def test_get_active_match_error(empty_db, mocker: MockerFixture):
     active_match_id = empty_db.get_active_match("123", "1234")
 
     assert active_match_id is None
-    mock_log.error.assert_called_with("A database error occurred while querying active match: %s", err)
+    mock_log.error.assert_called_with(
+        "A database error occurred while querying active match: %s", err
+    )
+
 
 def test_stop_match(empty_db):
+    """Stop match between two users"""
     empty_db.insert_user("123", "usr1")
     empty_db.insert_user("1234", "usr2")
     empty_db.start_match("123", "1234")
@@ -394,10 +412,7 @@ def test_stop_match(empty_db):
     active_match_id1 = empty_db.get_active_match("123", "1234")
     empty_db.stop_match(match_id=None, id_white="123", id_black="1234")
 
-    print("OOOOOOOOOOOOOOOO:", empty_db.get_match_data("123", "1234"))
     active_match_id2 = empty_db.get_active_match("123", "1234")
 
     assert active_match_id1 is not None
     assert active_match_id2 is None
-
-

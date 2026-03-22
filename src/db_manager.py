@@ -209,15 +209,21 @@ class MatchesDB:
             log.error("A database error occurred while starting match: %s", err)
             return False
 
-    def get_match_data(self, id_white: str, id_black: str) -> list[tuple] | None:
-        """Get a list containing all the match records between two users ordered from the latest to the oldest:
+    def get_matches(self, id_white: str, id_black: str) -> list | None:
+        """Get a list containing all the match records between two
+        users ordered from the latest to the oldest:
         (
-        [ID_Match, white_user1, black_user2, time_start, time_stop, chessboard_fen]
+        [
+        ID_Match, white_user1, black_user2, time_start, time_stop, chessboard_fen
+        ]
         )
 
         """
 
-        query = "SELECT ID_Match, white_user1, black_user2, time_start, time_stop, chessboard_fen FROM UserMatch ORDER BY time_start DESC"
+        query = """
+        SELECT ID_Match, white_user1, black_user2, time_start, time_stop, chessboard_fen
+        FROM UserMatch
+        ORDER BY time_start DESC"""
 
         try:
             with self.db.cursor() as cursor:
