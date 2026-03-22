@@ -101,7 +101,7 @@ class MatchesDB:
             return False
 
     def get_username(self, user_id: str) -> str | None:
-        """Fetches the username for a given user_id from the database."""
+        """Fetches the username for a given user_id on the database."""
         self.ensure_connection()
 
         query = "SELECT username FROM User WHERE ID_User = %s"
@@ -119,6 +119,27 @@ class MatchesDB:
                 # result is typically a tuple like ('JohnDoe',)
                 return str(result[0])
             log.warning("User_id: %s not found in database", user_id)
+            return None
+        
+    def get_user_id(self, username: str) -> str | None:
+        """Fetches the user_id for a given username on the database."""
+        self.ensure_connection()
+
+        query = "SELECT ID_User FROM User WHERE username = %s"
+
+        with self.db.cursor() as cursor:
+            cursor.execute(query, (username,))
+            result = cursor.fetchone()
+
+            # Check that the database doesn't return a dict instead of a RowType
+            if not isinstance(result, tuple):
+                log.error("Some error occurred while fetching: %s", username)
+                return None
+
+            if result:
+                # result is typically a tuple like ('JohnDoe',)
+                return str(result[0])
+            log.warning("User_id: %s not found in database", username)
             return None
 
     def show_table(self, table_name: str):
@@ -179,33 +200,48 @@ class MatchesDB:
         )
         return False
 
-    def stop_match(self, id_white: str, id_black: str) -> bool:
-        """stop a match record into UserMatch
-        by updating the time_top attribute to the current time"""
+    def stop_match(
+        self, match_id: str = None, id_white: str = None, id_black: str = None
+    ) -> bool:
+        """
+        Stops a match record by updating time_stop to NOW().
+        Supports stopping by match_id OR by player IDs.
+        """
         self.ensure_connection()
+        target_id = match_id
 
-        if not id_white or not id_black:
-            log.error("Invalid parameters: %s, %s", id_white, id_black)
-            return False
+        # Case 1: No match_id provided, try to find it via player IDs
+        if not target_id:
+            if id_white and id_black:
+                target_id = self.get_active_match(id_white, id_black)
+                if target_id is None:
+                    log.error(
+                        "No ongoing match found between %s and %s", id_white, id_black
+                    )
+                    return False
+            else:
+                log.error(
+                    "Invalid parameters: Provide either match_id OR both player IDs."
+                )
+                return False
 
-        sql = """UPDATE UserMatch UM SET time_stop = NOW() WHERE ID_Match = %s"""
+        # Case 2: target_id (either passed in or found via players)
+        sql = "UPDATE UserMatch SET time_stop = NOW() WHERE ID_Match = %s"
 
-        ongoing_match_id = self.get_active_match(id_white, id_black)
-        log.debug("Start_match.ongoing_match = %s", ongoing_match_id)
-
-        # check there is not an active game between the two players
-        if ongoing_match_id is not None:
+        try:
             with self.db.cursor() as cursor:
-                cursor.execute(sql, (ongoing_match_id,))
+                cursor.execute(sql, (target_id,))
                 self.db.commit()
-                log.debug("Match stopped between %s and %s", id_white, id_black)
+
+                if cursor.rowcount == 0:
+                    log.warning("No match found with ID %s to stop.", target_id)
+                    return False
+
+                log.debug("Match %s successfully stopped.", target_id)
                 return True
-        log.error(
-            "There is not an ongoing match between the two players: %s and %s",
-            id_white,
-            id_black,
-        )
-        return False
+        except mysql.connector.Error as err:
+            log.error("Database error while stopping match: %s", err)
+            return False
 
     def get_match_chessboard(self, match_id: str) -> str | None:
         """Get the chessboard fen string stored in a UserMatch record"""
@@ -347,7 +383,7 @@ class MatchesDB:
 
         user_table = """
             CREATE TABLE User (
-                ID_User INT PRIMARY KEY,
+                ID_User BIGINT PRIMARY KEY,
                 username VARCHAR(20) UNIQUE NOT NULL
             );
         """
@@ -355,13 +391,13 @@ class MatchesDB:
         user_match_table = """
             CREATE TABLE UserMatch (
             ID_Match INT AUTO_INCREMENT PRIMARY KEY,
-            white_user1 INT NOT NULL,
-            black_user2 INT NOT NULL,
+            white_user1 BIGINT NOT NULL,
+            black_user2 BIGINT NOT NULL,
             time_start DATETIME,
             time_stop DATETIME,
             chessboard_fen VARCHAR(90),
-            FOREIGN KEY (white_user1) REFERENCES User(ID_User) ON DELETE CASCADE,
-            FOREIGN KEY (black_user2) REFERENCES User(ID_User) ON DELETE CASCADE,
+            FOREIGN KEY (white_user1) REFERENCES User(ID_User),
+            FOREIGN KEY (black_user2) REFERENCES User(ID_User),
             CHECK (white_user1 <> black_user2)
         );
         """
