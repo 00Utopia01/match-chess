@@ -12,9 +12,9 @@ from telegram.ext import ContextTypes
 QUEUE: list[int] = []
 
 
-def create_board():
+def create_board(_fen: str) -> chess.Board:
     """creates a new game"""
-    board = chess.Board()
+    board = chess.Board(fen=_fen)
     return board
 
 
