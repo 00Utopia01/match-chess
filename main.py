@@ -51,10 +51,10 @@ if __name__ == "__main__":
         handle_euela_decline, pattern=r"^usr:decline_eula$"
     )
     accept_match_handler = CallbackQueryHandler(
-        handle_accept_match, pattern=r"^usr:accept_match_(\w+)$"
+        handle_accept_match, pattern=r"^usr:accept_match_(\w+)_([12])_(\w+)$"
     )
     refuse_match_handler = CallbackQueryHandler(
-        handle_refuse_match, pattern=r"^usr:refuse_match_(\w+)$"
+        handle_refuse_match, pattern=r"^usr:refuse_match_(\w+)_([12])_(\w+)$"
     )
 
     application.add_handler(echo_handler)

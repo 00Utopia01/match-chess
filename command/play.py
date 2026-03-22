@@ -6,8 +6,7 @@ from telegram import CopyTextButton, InlineKeyboardButton, InlineKeyboardMarkup,
 from telegram.ext import ContextTypes
 
 from src.chess_logic import matchmaking
-
-# from telegram.error import BadRequest, TelegramError
+from src.db_manager import DB as db
 
 
 def get_username(user_id: str) -> str | None:  # TEMP
@@ -71,10 +70,13 @@ async def no_user_db_msg(update: Update, context: ContextTypes.DEFAULT_TYPE):
     return
 
 
+# pylint: disable=too-many-arguments
 async def match_request_msg(
+    *,
     p1_id: str,
     p2_id: str,
     mode: int,
+    p1_username: str,
     update: Update,
     context: ContextTypes.DEFAULT_TYPE,
 ):
@@ -83,17 +85,17 @@ async def match_request_msg(
         return
 
     accept_button = InlineKeyboardButton(
-        "I accept", callback_data=f"usr:accept_match_{p1_id}"
+        "I accept", callback_data=f"usr:accept_match_{p1_id}_{mode}_{p1_username}"
     )
     refuse_button = InlineKeyboardButton(
-        "I refuse", callback_data=f"usr:refuse_match_{p1_id}"
+        "I refuse", callback_data=f"usr:refuse_match_{p1_id}_{mode}_{p1_username}"
     )
 
     options_layout = [[accept_button, refuse_button]]
 
     button_interface = InlineKeyboardMarkup(options_layout)
 
-    _text = f"{update.effective_user.full_name} invited you to a match"
+    _text = f"{p1_username} invited you to a match"
 
     if mode == 1:
         _text = _text + " where you are black"
@@ -163,16 +165,18 @@ async def challenge_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.message is None or update.effective_chat is None:
         return
 
-    p2_id = context.args[0]
+    p2_username = context.args[0]
+    if p2_username[0] == "@":
+        p2_username = p2_username[1:]
 
-    if p2_id == update.effective_user.name:
+    if p2_username == update.effective_user.username:
         await self_match_msg(update)
         return
 
-    p2_username = get_username(context.args[0])
+    p2_id = db.get_user_id(p2_username)
 
     # If the user to challenge is not found in the database send error message
-    if not p2_username:
+    if not p2_id:
         await no_user_db_msg(update, context)
         return
 
@@ -186,10 +190,13 @@ async def challenge_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     mode = 1 if p1_is_white else 2
 
+    p1_username = update.effective_user.full_name
+
     await match_request_msg(
         p1_id=str(update.effective_user.id),
         p2_id=p2_id,
         mode=mode,
+        p1_username=p1_username,
         update=update,
         context=context,
     )
