@@ -3,11 +3,7 @@
 from telegram import Update
 from telegram.ext import ContextTypes
 
-from command.debug.get_id import get_user_id
-from command.debug.get_username import get_username
-
-# from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, filters
-# from telegram.error import BadRequest, InvalidToken, NetworkError, TelegramError
+from src.db_manager import DB as db
 
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -15,14 +11,23 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not update.effective_chat or not update.effective_user:
         return
 
-    username = get_username(update)
-    userid = get_user_id(update)
+    username: str = update.effective_user.full_name
+    userid = str(update.effective_user.id)
 
-    await context.bot.send_message(
-        chat_id=update.effective_chat.id,
-        text=(
-            f"Welcome {username} to the Chess bot!\n"
-            f"Your ID is {userid}, share it with your friends to play togheter\n\n"
-            "In order to use this bot, read and accept the /eula paragraph!"
-        ),
-    )
+    if not db.insert_user(user_id=userid, username=username):
+        await context.bot.send_message(
+            chat_id=update.effective_chat.id,
+            text=(
+                "You are already logged.\n" "If you want to delete your info use /eula"
+            ),
+        )
+    else:
+        await context.bot.send_message(
+            chat_id=update.effective_chat.id,
+            text=(
+                f"Welcome <b>{username}</b> to Match Chess!\n"
+                "In order to use this bot, we need to gather some information about your account.\n"
+                "<i>To know more or delete your's information use /eula</i>"
+            ),
+            parse_mode="HTML",
+        )
