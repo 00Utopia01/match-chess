@@ -95,7 +95,7 @@ class MatchesDB:
                 log.debug("Deleted user:%s, affected rows: %s", user_id, affected_rows)
                 return True
 
-            log.debug(
+            log.error(
                 "User:%s does not exist, affected rows: %s", user_id, affected_rows
             )
             return False
@@ -110,17 +110,12 @@ class MatchesDB:
             cursor.execute(query, (user_id,))
             result = cursor.fetchone()
 
-            # Check that the database doesn't return a dict instead of a RowType
-            if not isinstance(result, tuple):
-                log.error("Some error occurred while fetching: %s", user_id)
-                return None
-
-            if result:
+            if result and isinstance(result, tuple):
                 # result is typically a tuple like ('JohnDoe',)
                 return str(result[0])
-            log.warning("User_id: %s not found in database", user_id)
+            log.error("User_id: %s not found in database", user_id)
             return None
-        
+
     def get_user_id(self, username: str) -> str | None:
         """Fetches the user_id for a given username on the database."""
         self.ensure_connection()
@@ -139,7 +134,7 @@ class MatchesDB:
             if result:
                 # result is typically a tuple like ('JohnDoe',)
                 return str(result[0])
-            log.warning("User_id: %s not found in database", username)
+            log.error("User_id: %s not found in database", username)
             return None
 
     def show_table(self, table_name: str):
@@ -186,22 +181,29 @@ class MatchesDB:
 
         # check there is not an active game between the two players
         if ongoing_match_id is None:
+            log.error(
+                """There is already an ongoing match between the two players: %s and %s""",
+                id_white,
+                id_black,
+            )
+            return False
+
+        try:
             with self.db.cursor() as cursor:
                 values = (id_white, id_black, chessboard.fen())
                 cursor.execute(sql, values)
                 self.db.commit()
                 log.debug("Match started between %s and %s", id_white, id_black)
                 return True
-
-        log.error(
-            """There is already an ongoing match between the two players: %s and %s""",
-            id_white,
-            id_black,
-        )
-        return False
+        except mysql.connector.Error as err:
+            log.error("A database error occurred while starting match: %s", err)
+            return False
 
     def stop_match(
-        self, match_id: str = None, id_white: str = None, id_black: str = None
+        self,
+        match_id: str | None = None,
+        id_white: str | None = None,
+        id_black: str | None = None,
     ) -> bool:
         """
         Stops a match record by updating time_stop to NOW().
@@ -240,7 +242,7 @@ class MatchesDB:
                 log.debug("Match %s successfully stopped.", target_id)
                 return True
         except mysql.connector.Error as err:
-            log.error("Database error while stopping match: %s", err)
+            log.error("A database error occurred while stopping match: %s", err)
             return False
 
     def get_match_chessboard(self, match_id: str) -> str | None:
