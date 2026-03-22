@@ -2,9 +2,71 @@
 Test db creation and functionalities
 """
 
+import mysql.connector
 import pytest
 from mysql.connector import Error, errorcode
 from pytest_mock import MockerFixture
+
+from src.db_manager import MatchesDB
+
+
+def test_contructor(mocker: MockerFixture):
+    """Test errors occurring in the init method"""
+    err = Error("some error")
+    mocker.patch("mysql.connector.connect", side_effect=err)
+    mock_handle_error = mocker.patch.object(MatchesDB, "_handle_error")
+
+    with pytest.raises(mysql.connector.Error):
+        MatchesDB(
+            user="user",
+            host="host",
+            password="password",
+            database="database",
+        )
+
+    mock_handle_error.assert_called_once_with(err)
+
+
+errors = [
+    {
+        "errorcode": errorcode.ER_ACCESS_DENIED_ERROR,
+        "log_response": "Auth failure: check username/password",
+    },
+    {"errorcode": errorcode.ER_BAD_DB_ERROR, "log_response": "Database does not exist"},
+]
+
+# pylint: disable=protected-access
+
+
+@pytest.mark.parametrize("error", errors)
+def test_handle_error(empty_db, error, mocker: MockerFixture):
+    """Testing the handling of errors in the init method"""
+    mock_log = mocker.patch("src.db_manager.log")
+    err = Error()
+    err.errno = error["errorcode"]
+
+    empty_db._handle_error(err)
+
+    mock_log.critical.assert_called_once_with(error["log_response"])
+
+
+def test_close_connection(empty_db, mocker: MockerFixture):
+    """Test if the close method is being called"""
+    mock_close = mocker.patch.object(empty_db.db, "close")
+
+    empty_db.close_connection()
+
+    mock_close.assert_called_once()
+
+
+def test_ensure_connection(empty_db, mocker: MockerFixture):
+    """Test if ensure_connection calls db.reconnect if the connection is down"""
+    mocker.patch.object(empty_db.db, "is_connected", return_value=False)
+    mock_reconnect = mocker.patch.object(empty_db.db, "reconnect")
+
+    empty_db.ensure_connection()
+
+    mock_reconnect.assert_called_once()
 
 
 def test_insert_and_get_user(empty_db):
@@ -15,18 +77,6 @@ def test_insert_and_get_user(empty_db):
     # Test retrieval
     username = empty_db.get_username("123")
     assert username == "test_username"
-
-
-def test_get_username(empty_db):
-    """Retreival of a user that doesn't exist"""
-    empty_db.insert_user("123", "test_username")
-
-    username = empty_db.get_username("123")
-    assert username == "test_username"
-
-    # Test retrieval of an non existent user
-    username = empty_db.get_username("99999")
-    assert username is None
 
 
 params = [
@@ -58,7 +108,7 @@ def test_insert_duplicate_entry(empty_db, mocker: MockerFixture):
 
 
 def test_insert_other_error(empty_db, mocker: MockerFixture):
-    """Handle the error raised cursor.execute"""
+    """Handle the error raised cursor.execute during insertion"""
     mock_log = mocker.patch("src.db_manager.log")
     spy_rollback = mocker.spy(empty_db.db, "rollback")
 
@@ -81,3 +131,273 @@ def test_insert_other_error(empty_db, mocker: MockerFixture):
     assert result is False
     mock_log.error.assert_called_once()
     spy_rollback.assert_called_once()
+
+
+def test_del_user_success(empty_db, mocker: MockerFixture):
+    """Test the deletion of an existent user"""
+    mock_log = mocker.patch("src.db_manager.log")
+    empty_db.insert_user("123", "test_username")
+
+    assert empty_db.del_user("123") is True
+    mock_log.debug.assert_called_once()
+
+
+def test_del_user_fail(empty_db, mocker: MockerFixture):
+    """Test the deletion of a non existent user"""
+    mock_log = mocker.patch("src.db_manager.log")
+
+    assert empty_db.del_user("123") is False
+    mock_log.error.assert_called_once()
+
+
+def test_get_username(empty_db, mocker: MockerFixture):
+    """Retreival of a user that doesn't exist"""
+    mock_log = mocker.patch("src.db_manager.log")
+    empty_db.insert_user("123", "test_username")
+    user_id1 = "123"
+    user_id2 = "99999"
+
+    username1 = empty_db.get_username(user_id1)
+    username2 = empty_db.get_username(user_id2)
+
+    assert username1 == "test_username"
+    # Test retrieval of an non existent user
+    assert username2 is None
+    mock_log.error.assert_called_once_with(
+        "User_id: %s not found in database", user_id2
+    )
+
+
+def test_get_username_wrong_type(empty_db, mocker: MockerFixture):
+    """Test the retrieval of the id of a user, but the database returns a dict instead of tuple"""
+    mock_log = mocker.patch("src.db_manager.log")
+    # Make cursor.fetchone return a dict instead of a tuple
+    mock_cursor = mocker.MagicMock()
+    mock_cursor.fetchone.return_value = {"test_key": "val"}
+    mock_cursor_func = mocker.patch.object(empty_db.db, "cursor")
+    mock_cursor_func.return_value.__enter__.return_value = mock_cursor
+
+    user_id = empty_db.get_username("123")
+
+    assert user_id is None
+    mock_log.error.assert_called_once_with(
+        "Some error occurred while fetching: %s", "123"
+    )
+
+
+def test_get_user_id_success(empty_db):
+    """Test the retrieval of the id of an existent user"""
+    empty_db.insert_user("123", "test_username")
+
+    user_id = empty_db.get_user_id("test_username")
+
+    assert user_id == "123"
+
+
+def test_get_user_id_fail(empty_db, mocker: MockerFixture):
+    """Test the retrieval of the id of a non existent user"""
+    mock_log = mocker.patch("src.db_manager.log")
+
+    user_id = empty_db.get_user_id("test_username")
+
+    assert user_id is None
+    mock_log.error.assert_called_once_with(
+        "Username: %s not found in database", "test_username"
+    )
+
+
+def test_get_user_id_wrong_type(empty_db, mocker: MockerFixture):
+    """Test the retrieval of the id of a user, but the database returns a dict instead of tuple"""
+    mock_log = mocker.patch("src.db_manager.log")
+    # Make cursor.fetchone return a dict instead of a tuple
+    mock_cursor = mocker.MagicMock()
+    mock_cursor.fetchone.return_value = {"test_key": "val"}
+    mock_cursor_func = mocker.patch.object(empty_db.db, "cursor")
+    mock_cursor_func.return_value.__enter__.return_value = mock_cursor
+
+    user_id = empty_db.get_user_id("test_username")
+
+    assert user_id is None
+    mock_log.error.assert_called_once_with(
+        "Some error occurred while fetching: %s", "test_username"
+    )
+
+
+def test_show_table_success(empty_db):
+    result = empty_db.show_table("User")
+
+    assert result is True
+
+
+def test_show_table_empty_tablename(empty_db, mocker: MockerFixture):
+    mock_log = mocker.patch("src.db_manager.log")
+
+    result = empty_db.show_table("")
+
+    assert result is False
+    mock_log.error.assert_called_once_with("Tablename is empty")
+
+
+def test_show_table_no_table(empty_db, mocker: MockerFixture):
+    mock_log = mocker.patch("src.db_manager.log")
+
+    result = empty_db.show_table("Test_table")
+
+    assert result is False
+    mock_log.error.assert_called_once_with("No such table %s", "Test_table")
+
+
+parameters = [
+    {"id_white": "", "id_black": "", "expected_val": False},
+    {"id_white": "g45g65", "id_black": "56h65g", "expected_val": False},
+    {"id_white": "4564563", "id_black": "745734", "expected_val": True},
+]
+
+
+@pytest.mark.parametrize("param", parameters)
+def test_start_match_parameters(empty_db, param):
+    # Insert the users in User to avoid the foreing key constraint on UserMatch
+    empty_db.insert_user(param["id_white"], "usr1")
+    empty_db.insert_user(param["id_black"], "usr2")
+
+    assert (
+        empty_db.start_match(param["id_white"], param["id_black"])
+        is param["expected_val"]
+    )
+
+
+def test_start_match_ongoing_match(empty_db, mocker: MockerFixture):
+    mock_log = mocker.patch("src.db_manager.log")
+
+    # Start an active match between two users
+    empty_db.insert_user("123", "usr1")
+    empty_db.insert_user("1234", "usr2")
+
+    result1 = empty_db.start_match("123", "1234")
+    result2 = empty_db.start_match("123", "1234")
+
+    assert result1 is True
+    assert result2 is False
+    mock_log.error.assert_called_with(
+        """There is already an ongoing match between the two players: %s and %s""",
+        "123",
+        "1234",
+    )
+
+
+def test_start_match_error(empty_db, mocker: MockerFixture):
+    empty_db.insert_user("123", "usr1")
+    empty_db.insert_user("1234", "usr2")
+
+    mock_log = mocker.patch("src.db_manager.log")
+
+    mocker.patch.object(empty_db, "get_active_match", return_value=None)
+
+    err = Error("Some error")
+    mock_cursor_func = mocker.patch.object(empty_db.db, "cursor")
+    mock_cursor = mocker.MagicMock()
+    mock_cursor.execute.side_effect = err
+    mock_cursor_func.return_value.__enter__.return_value = mock_cursor
+
+    result = empty_db.start_match("123", "1234")
+
+    assert result is False
+    mock_log.error.assert_called_once_with(
+        "A database error occurred while starting match: %s", err
+    )
+
+
+def test_get_match_data(empty_db):
+    empty_db.insert_user("123", "usr1")
+    empty_db.insert_user("1234", "usr2")
+    empty_db.start_match("123", "1234")
+    empty_db.insert_user("12345", "usr3")
+    empty_db.start_match("123", "12345")
+
+    matches_list = empty_db.get_match_data("123", "1234")
+
+    assert str(matches_list[0][1]) == "123"
+    assert str(matches_list[0][2]) == "1234"
+    assert str(matches_list[1][1]) == "123"
+    assert str(matches_list[1][2]) == "12345"
+
+
+def test_get_match_data_wrong_type(empty_db, mocker: MockerFixture):
+    mock_log = mocker.patch("src.db_manager.log")
+    empty_db.insert_user("123", "usr1")
+    empty_db.insert_user("1234", "usr2")
+    empty_db.start_match("123", "1234")
+    # Make cursor.fetchone return a dict instead of a tuple
+    mock_cursor = mocker.MagicMock()
+    mock_cursor.fetchone.return_value = {"test_key": "val"}
+    mock_cursor_func = mocker.patch.object(empty_db.db, "cursor")
+    mock_cursor_func.return_value.__enter__.return_value = mock_cursor
+
+    matches_list = empty_db.get_match_data("123", "1234")
+
+    assert matches_list is None
+    mock_log.error.assert_called_with(
+        "Some error occurred while fetching match: %s, %s", "123", "1234"
+    )
+
+def test_get_match_data_error(empty_db, mocker: MockerFixture):
+    mock_log = mocker.patch("src.db_manager.log")
+    empty_db.insert_user("123", "usr1")
+    empty_db.insert_user("1234", "usr2")
+    empty_db.start_match("123", "1234")
+    
+    err = Error()
+    mock_cursor = mocker.MagicMock()
+    mock_cursor.execute.side_effect = err
+    mock_cursor_func = mocker.patch.object(empty_db.db, "cursor")
+    mock_cursor_func.return_value.__enter__.return_value = mock_cursor
+
+    matches_list = empty_db.get_match_data("123", "1234")
+
+    assert matches_list is None
+    mock_log.error.assert_called_with(
+        "A database error occurred while querying match data: %s", err
+    )
+
+def test_get_active_match(empty_db):
+    empty_db.insert_user("123", "usr1")
+    empty_db.insert_user("1234", "usr2")
+
+    active_match_id1 = empty_db.get_active_match("123", "1234")
+    
+    empty_db.start_match("123", "1234")
+
+    active_match_id2 = empty_db.get_active_match("123", "1234")
+
+    assert active_match_id1 is None
+    assert active_match_id2 is not None
+
+def test_get_active_match_error(empty_db, mocker: MockerFixture):
+    mock_log = mocker.patch("src.db_manager.log")
+
+    err = Error()
+    mock_cursor_func = mocker.patch.object(empty_db.db, "cursor")
+    mock_cursor = mocker.MagicMock()
+    mock_cursor.execute.side_effect = err
+    mock_cursor_func.return_value.__enter__.return_value = mock_cursor
+
+    active_match_id = empty_db.get_active_match("123", "1234")
+
+    assert active_match_id is None
+    mock_log.error.assert_called_with("A database error occurred while querying active match: %s", err)
+
+def test_stop_match(empty_db):
+    empty_db.insert_user("123", "usr1")
+    empty_db.insert_user("1234", "usr2")
+    empty_db.start_match("123", "1234")
+
+    active_match_id1 = empty_db.get_active_match("123", "1234")
+    empty_db.stop_match(match_id=None, id_white="123", id_black="1234")
+
+    print("OOOOOOOOOOOOOOOO:", empty_db.get_match_data("123", "1234"))
+    active_match_id2 = empty_db.get_active_match("123", "1234")
+
+    assert active_match_id1 is not None
+    assert active_match_id2 is None
+
+
