@@ -400,6 +400,279 @@ def test_get_match_data_invalid_input(empty_db):
     assert empty_db.get_match_data(None) is None
 
 
+def test_stop_match_by_ids(empty_db):
+    """Stop match between two users using user's ids"""
+    empty_db.insert_user("123", "usr1")
+    empty_db.insert_user("1234", "usr2")
+    empty_db.start_match("123", "1234")
+
+    active_match_id1 = empty_db.get_active_match("123", "1234")
+    empty_db.stop_match(id_white="123", id_black="1234")
+
+    active_match_id2 = empty_db.get_active_match("123", "1234")
+
+    assert active_match_id1 is not None
+    assert active_match_id2 is None
+
+
+def test_stop_match_by_match_id(empty_db):
+    """Test stop_match using match_id"""
+    empty_db.insert_user("123", "usr1")
+    empty_db.insert_user("1234", "usr2")
+    empty_db.start_match("123", "1234")
+
+    active_match_id1 = empty_db.get_active_match("123", "1234")
+    empty_db.stop_match(match_id=active_match_id1)
+    active_match_id2 = empty_db.get_active_match("123", "1234")
+
+    assert active_match_id2 is None
+
+
+params = [
+    {"match_id": None, "id_white": None, "id_black": None, "expected_val": False},
+    {"match_id": "1", "id_white": None, "id_black": None, "expected_val": True},
+    {"match_id": None, "id_white": "123", "id_black": "1234", "expected_val": True},
+    {"match_id": None, "id_white": "999", "id_black": "999", "expected_val": False},
+    {"match_id": "999", "id_white": None, "id_black": None, "expected_val": False},
+]
+
+
+@pytest.mark.parametrize("param", params)
+def test_stop_match_param(empty_db, param):
+    """Pass various parameters to stop_match"""
+    empty_db.insert_user("123", "usr1")
+    empty_db.insert_user("1234", "usr2")
+    empty_db.start_match("123", "1234")
+
+    result = empty_db.stop_match(
+        match_id=param["match_id"],
+        id_white=param["id_white"],
+        id_black=param["id_black"],
+    )
+
+    assert result is param["expected_val"]
+
+
+def test_stop_match_error(empty_db, mocker: MockerFixture):
+    """Raise an error while stopping a match"""
+    mock_log = mocker.patch("src.db_manager.log")
+    empty_db.insert_user("123", "usr1")
+    empty_db.insert_user("1234", "usr2")
+    empty_db.start_match("123", "1234")
+
+    err = Error("Some error")
+    mock_cursor_func = mocker.patch.object(empty_db.db, "cursor")
+    mock_cursor = mocker.MagicMock()
+    mock_cursor.execute.side_effect = err
+    mock_cursor_func.return_value.__enter__.return_value = mock_cursor
+
+    result = empty_db.stop_match("123", "1234")
+
+    assert result is False
+    mock_log.error.assert_called_with(
+        "A database error occurred while stopping match: %s", err
+    )
+
+
+def test_get_match_chessboard_success(empty_db):
+    """Get chessboard fen stored in a match"""
+    empty_db.insert_user("123", "usr1")
+    empty_db.insert_user("1234", "usr2")
+    empty_db.start_match("123", "1234")
+
+    match_id = empty_db.get_active_match("123", "1234")
+    chessboard = empty_db.get_match_chessboard(match_id)
+
+    assert chessboard == "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
+
+
+def test_get_match_chessboard_no_match_id(empty_db, mocker: MockerFixture):
+    """Try to get_match_chessboard without any match_id"""
+    mock_log = mocker.patch("src.db_manager.log")
+    empty_db.insert_user("123", "usr1")
+    empty_db.insert_user("1234", "usr2")
+    empty_db.start_match("123", "1234")
+
+    chessboard = empty_db.get_match_chessboard(None)
+
+    assert chessboard is None
+    mock_log.error.assert_called_with("Match_id cannot be None")
+
+
+def test_get_match_chessboard_empty_chessboard(empty_db, mocker: MockerFixture):
+    """Make the db return an empty chessboard"""
+    mock_log = mocker.patch("src.db_manager.log")
+
+    empty_db.insert_user("123", "usr1")
+    empty_db.insert_user("1234", "usr2")
+    empty_db.start_match("123", "1234")
+    match_id = empty_db.get_active_match("123", "1234")
+
+    # Make cursor.fetchone return None
+    mock_cursor_func = mocker.patch.object(empty_db.db, "cursor")
+    mock_cursor = mocker.MagicMock()
+    mock_cursor.fetchone.return_value = None
+    mock_cursor_func.return_value.__enter__.return_value = mock_cursor
+
+    chessboard = empty_db.get_match_chessboard(match_id)
+
+    assert chessboard is None
+    mock_log.error.assert_called_with("Match not found: %s", match_id)
+
+
+def test_get_match_chessboard_wrong_type(empty_db, mocker: MockerFixture):
+    """Make the db return a dict instead of a tuple"""
+    mock_log = mocker.patch("src.db_manager.log")
+
+    empty_db.insert_user("123", "usr1")
+    empty_db.insert_user("1234", "usr2")
+    empty_db.start_match("123", "1234")
+    match_id = empty_db.get_active_match("123", "1234")
+
+    # Make cursor.fetchone return None
+    mock_cursor_func = mocker.patch.object(empty_db.db, "cursor")
+    mock_cursor = mocker.MagicMock()
+    mock_cursor.fetchone.return_value = {"key": "value"}
+    mock_cursor_func.return_value.__enter__.return_value = mock_cursor
+
+    chessboard = empty_db.get_match_chessboard(match_id)
+
+    assert chessboard is None
+    mock_log.error.assert_called_with(
+        "Some error occurred while fetching: chessboard_fen"
+    )
+
+
+def test_get_match_chessboard_error(empty_db, mocker: MockerFixture):
+    """Raise an error while querying a chessboard from a match"""
+    mock_log = mocker.patch("src.db_manager.log")
+
+    empty_db.insert_user("123", "usr1")
+    empty_db.insert_user("1234", "usr2")
+    empty_db.start_match("123", "1234")
+    match_id = empty_db.get_active_match("123", "1234")
+
+    err = Error("Some error")
+    mock_cursor_func = mocker.patch.object(empty_db.db, "cursor")
+    mock_cursor = mocker.MagicMock()
+    mock_cursor.execute.side_effect = err
+    mock_cursor_func.return_value.__enter__.return_value = mock_cursor
+
+    chessboard = empty_db.get_match_chessboard(match_id)
+
+    assert chessboard is None
+    mock_log.error.assert_called_with(
+        "A database error occurred while querying chessboard, match_id: %s, err: %s",
+        match_id,
+        err,
+    )
+
+
+def test_add_move_success(empty_db, mocker: MockerFixture):
+    """Add a move successfully"""
+    mock_log = mocker.patch("src.db_manager.log")
+
+    empty_db.insert_user("1", "p1")
+    empty_db.insert_user("2", "p2")
+    empty_db.start_match("1", "2")
+    match_id = empty_db.get_active_match("1", "2")
+
+    result = empty_db.add_move(match_id, "e2e4")
+
+    assert result is True
+    mock_log.debug.assert_any_call("Match with ID:%s updated successfully", match_id)
+
+    # Verify db actually updated
+    new_fen = empty_db.get_match_chessboard(match_id)
+    assert (
+        new_fen == "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1"
+    )  # Simple check that FEN changed
+
+
+def test_add_move_no_match_id(empty_db, mocker: MockerFixture):
+    """Try to add a move without providing match_id"""
+    mock_log = mocker.patch("src.db_manager.log")
+
+    result = empty_db.add_move(None, "e2e4")
+
+    assert result is False
+    mock_log.error.assert_called_with("Match_id and move_uci cannot be empty")
+
+
+def test_add_move_match_not_found(empty_db, mocker: MockerFixture):
+    """Try to add a move to a non existent match"""
+    mock_log = mocker.patch("src.db_manager.log")
+
+    # Provide an id that definitely doesn't exist
+    result = empty_db.add_move("999-non-existent", "e2e4")
+
+    assert result is False
+    mock_log.error.assert_any_call(
+        "Cannot query chessboard_fen from: the match does not exist: %s",
+        "999-non-existent",
+    )
+
+
+def test_add_move_illegal_move(empty_db, mocker: MockerFixture):
+    """Try to add an illegal move"""
+    mock_log = mocker.patch("src.db_manager.log")
+
+    empty_db.insert_user("1", "p1")
+    empty_db.insert_user("2", "p2")
+    empty_db.start_match("1", "2")
+    match_id = empty_db.get_active_match("1", "2")
+
+    # e2e5 is an illegal move for a pawn on the first turn
+    result = empty_db.add_move(match_id, "e2e5")
+
+    assert result is False
+    # Check that it caught the IllegalMoveError
+    pos_args, _ = mock_log.error.call_args
+    assert "the given move is invalid" in pos_args[0]
+
+
+def test_add_move_value_error(empty_db, mocker: MockerFixture):
+    """Raise ValueError while adding a move"""
+    mock_log = mocker.patch("src.db_manager.log")
+
+    empty_db.insert_user("1", "p1")
+    empty_db.insert_user("2", "p2")
+    empty_db.start_match("1", "2")
+    match_id = empty_db.get_active_match("1", "2")
+
+    err = ValueError("val error")
+    mock_push_uci = mocker.patch("chess.Board.push_uci")
+    mock_push_uci.side_effect = err
+    result = empty_db.add_move(match_id, "non-move")
+
+    assert result is False
+    mock_log.error.assert_called_with("Cannot update chessboard: %s", err)
+
+
+def test_add_move_db_error(empty_db, mocker: MockerFixture):
+    """Raise an error while adding a move"""
+    mock_log = mocker.patch("src.db_manager.log")
+
+    empty_db.insert_user("1", "p1")
+    empty_db.insert_user("2", "p2")
+    empty_db.start_match("1", "2")
+    match_id = empty_db.get_active_match("1", "2")
+
+    # Mock the cursor to raise a MySQL error when executing
+    err = Error("Some error")
+    test_chessboard = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
+    mocker.patch.object(empty_db, "get_match_chessboard", return_value=test_chessboard)
+    mock_cursor = mocker.MagicMock()
+    mock_cursor.execute.side_effect = err
+    mock_cursor_func = mocker.patch.object(empty_db.db, "cursor")
+    mock_cursor_func.return_value.__enter__.return_value = mock_cursor
+
+    result = empty_db.add_move(match_id, "e2e4")
+
+    assert result is False
+    mock_log.error.assert_any_call("Cannot update chessboard: %s", err)
+
+
 def test_get_active_match(empty_db):
     """Get the active match between two users"""
     empty_db.insert_user("123", "usr1")
@@ -433,16 +706,18 @@ def test_get_active_match_error(empty_db, mocker: MockerFixture):
     )
 
 
-def test_stop_match(empty_db):
-    """Stop match between two users"""
-    empty_db.insert_user("123", "usr1")
-    empty_db.insert_user("1234", "usr2")
-    empty_db.start_match("123", "1234")
+def test_get_active_match_wrong_type(empty_db, mocker: MockerFixture):
+    """Raise an error while querying active match"""
+    mock_log = mocker.patch("src.db_manager.log")
 
-    active_match_id1 = empty_db.get_active_match("123", "1234")
-    empty_db.stop_match(match_id=None, id_white="123", id_black="1234")
+    mock_cursor_func = mocker.patch.object(empty_db.db, "cursor")
+    mock_cursor = mocker.MagicMock()
+    mock_cursor.fetchone.side_effect = {"key": "val"}
+    mock_cursor_func.return_value.__enter__.return_value = mock_cursor
 
-    active_match_id2 = empty_db.get_active_match("123", "1234")
+    active_match_id = empty_db.get_active_match("123", "1234")
 
-    assert active_match_id1 is not None
-    assert active_match_id2 is None
+    assert active_match_id is None
+    mock_log.error.assert_called_with(
+        "Some error occurred while fetching: active_match"
+    )
