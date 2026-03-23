@@ -137,7 +137,7 @@ async def handle_accept_match(update: Update, context: ContextTypes.DEFAULT_TYPE
         caption=(
             f"<b>Game Vs {p1_name}</b>\n"
             "You have  accepted the challenge request\n\n"
-            f"<i>Match number: {id_match}"
+            f"<i>Match number: {id_match}</i>"
         ),
         parse_mode="HTML",
     )
