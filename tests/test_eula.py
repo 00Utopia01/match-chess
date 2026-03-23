@@ -10,8 +10,9 @@ from command import eula
 
 
 def test_create_button():
+    """Test to create a button"""
     result = eula.create_button()
-    assert type(result) is InlineKeyboardMarkup
+    assert isinstance(result, InlineKeyboardMarkup) is True
 
 
 @pytest.mark.asyncio
@@ -41,8 +42,5 @@ async def test_eula_succes(mocker: MockerFixture):
     await eula.eula(update, context)
 
     context.bot.send_message.assert_called_once_with(
-        chat_id=123,
-        text=mocker.ANY,
-        parse_mode=mocker.ANY,
-        reply_markup=markup
+        chat_id=123, text=mocker.ANY, parse_mode=mocker.ANY, reply_markup=markup
     )
