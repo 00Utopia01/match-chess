@@ -306,7 +306,7 @@ class MatchesDB:
             if id_white and id_black:
                 target_id = self.get_active_match(id_white, id_black)
                 if target_id is None:
-                    log.error(
+                    log.debug(
                         "No ongoing match found between %s and %s", id_white, id_black
                     )
                     return False
@@ -325,7 +325,7 @@ class MatchesDB:
                 self.db.commit()
 
                 if cursor.rowcount == 0:
-                    log.warning("No match found with ID %s to stop.", target_id)
+                    log.error("No match found with ID %s", target_id)
                     return False
 
                 log.debug("Match %s successfully stopped.", target_id)
@@ -339,27 +339,35 @@ class MatchesDB:
         self.ensure_connection()
 
         if not match_id:
-            log.error("Match_id cannot be empty")
+            log.error("Match_id cannot be None")
             return None
 
         # this query never returns an error in mysql
         query = (
             "SELECT chessboard_fen FROM UserMatch UM WHERE UM.ID_Match = %s LIMIT 1;"
         )
-        with self.db.cursor() as cursor:
-            cursor.execute(query, (match_id,))
-            chessboard_fen = cursor.fetchone()
+        try:
+            with self.db.cursor() as cursor:
+                cursor.execute(query, (match_id,))
+                chessboard_fen = cursor.fetchone()
 
-            if not chessboard_fen:
-                log.error("Match not found: %s", match_id)
-                return None
+                if not chessboard_fen:
+                    log.error("Match not found: %s", match_id)
+                    return None
 
-            # Check that the database doesn't return a dict instead of a RowType
-            if not isinstance(chessboard_fen, tuple):
-                log.error("Some error occurred while fetching: chessboard_fen")
-                return None
+                # Check that the database doesn't return a dict instead of a RowType
+                if not isinstance(chessboard_fen, tuple):
+                    log.error("Some error occurred while fetching: chessboard_fen")
+                    return None
 
-            return str(chessboard_fen[0])
+                return str(chessboard_fen[0])
+        except mysql.connector.Error as err:
+            log.error(
+                "A database error occurred while querying chessboard, match_id: %s, err: %s",
+                match_id,
+                err,
+            )
+            return None
 
     def add_move(self, match_id: str, move_uci: str) -> bool:
         """update chessboard attribute in the match with match_id to make a move"""
@@ -394,7 +402,7 @@ class MatchesDB:
             with self.db.cursor() as cursor:
                 cursor.execute(update, (chessboard.fen(), match_id))
                 self.db.commit()
-                log.error("Match with ID:%s updated successfully", match_id)
+                log.debug("Match with ID:%s updated successfully", match_id)
                 return True
         except mysql.connector.Error as err:
             log.error("Cannot update chessboard: %s", err)
