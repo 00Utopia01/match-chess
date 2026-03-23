@@ -8,36 +8,6 @@ from telegram.ext import ContextTypes
 from src.chess_logic import matchmaking
 from src.db_manager import DB as db
 
-
-def get_username(user_id: str) -> str | None:  # TEMP
-    """get the username of a specified user"""
-    if user_id:
-        return "username"
-    return None
-
-
-def query2(temp: str) -> str:  # TEMP
-    """placeholder of a query"""
-    if temp:
-        return "1234"
-    return "1234"
-
-
-def query3(temp: str):  # TEMP
-    """placeholder of a query"""
-    if temp:
-        return "848994744"  # "7584929619"
-    return "4321"
-
-
-def query4(temp, temp2):  # TEMP
-    """placeholder of a query"""
-    if temp:
-        if temp2:
-            return
-    return
-
-
 # Messages >---------------------------------
 
 
@@ -200,5 +170,3 @@ async def challenge_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
         update=update,
         context=context,
     )
-
-    return None
