@@ -11,21 +11,24 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not update.effective_chat or not update.effective_user:
         return
 
-    username: str = update.effective_user.full_name
+    username = update.effective_user.username
     userid = str(update.effective_user.id)
+
+    if username is None:
+        return
 
     if not db.insert_user(user_id=userid, username=username):
         await context.bot.send_message(
-            chat_id=update.effective_chat.id,
+            chat_id=userid,
             text=(
                 "You are already logged.\n" "If you want to delete your info use /eula"
             ),
         )
     else:
         await context.bot.send_message(
-            chat_id=update.effective_chat.id,
+            chat_id=userid,
             text=(
-                f"Welcome <b>{username}</b> to Match Chess!\n"
+                f"Welcome <b>{update.effective_user.full_name}</b> to Match Chess!\n"
                 "In order to use this bot, we need to gather some information about your account.\n"
                 "<i>To know more or delete your's information use /eula</i>"
             ),
