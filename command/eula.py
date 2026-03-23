@@ -3,22 +3,24 @@
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import ContextTypes
 
-# from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, filters
 
-
-async def eula(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """This function creates an interface and shows the user the EULA paragraph"""
-
-    if not update.effective_chat or not update.effective_user:
-        return
-
+def create_button() -> InlineKeyboardMarkup:
+    """Create button markup"""
     accept_button = InlineKeyboardButton("I accept", callback_data="usr:accept_eula")
     refuse_button = InlineKeyboardButton("I decline", callback_data="usr:decline_eula")
 
     options_layout = [[accept_button, refuse_button]]
 
-    button_interface = InlineKeyboardMarkup(options_layout)
+    return InlineKeyboardMarkup(options_layout)
 
+
+async def eula(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """This function creates an interface and shows the user the EULA paragraph"""
+
+    if not update.effective_chat:
+        return
+
+    button_interface = create_button()
     await context.bot.send_message(
         chat_id=update.effective_chat.id,
         text=(
