@@ -2,6 +2,8 @@
 This module handles MySQL database calls
 """
 
+from typing import Any, cast
+
 import chess
 import mysql.connector
 from mysql.connector import errorcode
@@ -242,6 +244,48 @@ class MatchesDB:
                 return records
         except mysql.connector.Error as err:
             log.error("A database error occurred while querying match data: %s", err)
+            return None
+
+    def get_match_data(self, match_id: str) -> dict | None:
+        """
+        Fetches data from UserMatch table.
+        Returns a dict if the record exists, None otherwise.
+        {
+            "ID_Match": 1,
+            "white_user1": 12345,
+            "black_user2": 67890,
+            "time_start": datetime(...),
+            "time_stop": datetime(...),
+            "chessboard_fen": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
+        }
+        """
+        self.ensure_connection()
+
+        # Validazione base dell'input
+        if not match_id or not str(match_id).isdigit():
+            log.error("ID_Match non valido: %s", match_id)
+            return None
+
+        query = """
+            SELECT ID_Match, white_user1, black_user2, time_start, time_stop, chessboard_fen
+            FROM UserMatch
+            WHERE ID_Match = %s
+        """
+
+        try:
+            with self.db.cursor(dictionary=True) as cursor:
+                cursor.execute(query, (match_id,))
+                record = cursor.fetchone()
+
+                if record is None:
+                    log.error("Match not found ID: %s", match_id)
+                    return None
+
+                log.debug("Fetched match from UserMatch %s", match_id)
+                return cast(dict[str, Any], record)
+
+        except mysql.connector.Error as err:
+            log.error("Database error while executing get_match_data: %s", err)
             return None
 
     def stop_match(
