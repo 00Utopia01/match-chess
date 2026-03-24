@@ -370,6 +370,36 @@ def test_get_matches_error(empty_db, mocker: MockerFixture):
     )
 
 
+def test_get_match_data_success(empty_db):
+    """Fetch a dict with get_match_data containing all the data"""
+    empty_db.insert_user("123", "usr1")
+    empty_db.insert_user("1234", "usr2")
+    empty_db.start_match("123", "1234")
+    active_match_id = empty_db.get_active_match("123", "1234")
+
+    match_data = empty_db.get_match_data(active_match_id)
+
+    assert match_data is not None
+    assert str(match_data["ID_Match"]) == active_match_id
+    assert str(match_data["white_user1"]) == "123"
+    assert str(match_data["black_user2"]) == "1234"
+    assert "chessboard_fen" in match_data
+    assert match_data["time_stop"] is None
+
+
+def test_get_match_data_not_found(empty_db):
+    """Try to input wrong match_id"""
+    match_data = empty_db.get_match_data("999")
+
+    assert match_data is None
+
+
+def test_get_match_data_invalid_input(empty_db):
+    """Test get_match_data with invalid inputs"""
+    assert empty_db.get_match_data("invalid string") is None
+    assert empty_db.get_match_data(None) is None
+
+
 def test_get_active_match(empty_db):
     """Get the active match between two users"""
     empty_db.insert_user("123", "usr1")
