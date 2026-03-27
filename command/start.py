@@ -14,9 +14,6 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     username = update.effective_user.username
     userid = str(update.effective_user.id)
 
-    if username is None:
-        return
-
     if not db.insert_user(user_id=userid, username=username):
         await context.bot.send_message(
             chat_id=userid,

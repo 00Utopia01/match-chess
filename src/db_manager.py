@@ -48,16 +48,20 @@ class MatchesDB:
         if not self.db.is_connected():
             self.db.reconnect()
 
-    def insert_user(self, user_id: str, username: str) -> bool:
+    def insert_user(self, user_id: str, username: str | None) -> bool:
         """insert a user in User table with specified data"""
 
         # parameter validation
-        if not user_id or not username:
-            log.error("Invalid user_id or username")
+        if not user_id:
+            log.error("Invalid user_id")
             return False
 
-        if not isinstance(user_id, str) or not isinstance(username, str):
-            log.error("Parameters must be strings")
+        if not isinstance(user_id, str):
+            log.error("user_id must be a string")
+            return False
+
+        if username and not isinstance(username, str):
+            log.error("username must be a string")
             return False
 
         if not user_id.isdigit():
@@ -68,8 +72,15 @@ class MatchesDB:
 
         try:
             with self.db.cursor() as cursor:
-                sql = "INSERT INTO User (ID_User, username) VALUES (%s, %s)"
-                values = (user_id, username)
+                if username:
+                    sql = "INSERT INTO User (ID_User, username) VALUES (%s, %s)"
+                    values = (user_id, username)
+                else:
+                    sql = (
+                        "INSERT INTO User (ID_User, username) "
+                        "VALUES (%s, CONCAT('_anonymous_', %s, '_'))"
+                    )
+                    values = (user_id, user_id)
                 cursor.execute(sql, values)
                 self.db.commit()
                 return True
@@ -487,7 +498,7 @@ class MatchesDB:
         user_table = """
             CREATE TABLE User (
                 ID_User BIGINT PRIMARY KEY,
-                username VARCHAR(20) UNIQUE NOT NULL
+                username VARCHAR(50) UNIQUE NOT NULL
             );
         """
 
