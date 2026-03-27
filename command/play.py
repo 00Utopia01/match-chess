@@ -113,6 +113,45 @@ async def play(update: Update, context: ContextTypes.DEFAULT_TYPE):
     return
 
 
+def edit_username(username: str) -> str:
+    """edit username args"""
+    if username[0] == "@":
+        username = username[1:]
+    return username
+
+
+def get_color(mode: str) -> int:
+    """from a mode string get the color of p1"""
+    match mode:
+        case "-w":
+            p1_is_white = int(1)
+        case "-b":
+            p1_is_white = int(0)
+        case _:
+            p1_is_white = randint(0, 1)
+    return p1_is_white
+
+
+def get_mode(args: list[str]) -> str:
+    """get from args the mode string if is formated correctly"""
+    mode = ""
+    if len(args) >= 2 and args[1] == ("-w" or "-W"):
+        mode = "-w"
+    if len(args) >= 2 and args[1] == ("-b" or "-B"):
+        mode = "-b"
+    return mode
+
+
+def get_p2_id(*, p1_username: str, p2_username: str) -> str:
+    """get id 2 from db"""
+    if p2_username == p1_username:
+        return "Self Match"
+    p2_id = db.get_user_id(p2_username)
+    if p2_id is None:
+        return "No User DB"
+    return p2_id
+
+
 async def challenge_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """make a player (p1) send a challenge request to the user with the specified id (p2)
     the challenged user will receive a message with an identifier of the user who sent the challenge
@@ -135,37 +174,24 @@ async def challenge_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.message is None or update.effective_chat is None:
         return
 
-    p2_username = context.args[0]
-    if p2_username[0] == "@":
-        p2_username = p2_username[1:]
+    p1_username = update.effective_user.full_name
+    p2_username = edit_username(context.args[0])
 
-    if p2_username == update.effective_user.username:
+    p2_id = get_p2_id(p2_username=p2_username, p1_username=p1_username)
+
+    if p2_id == "Self Match":
         await self_match_msg(update)
         return
-
-    p2_id = db.get_user_id(p2_username)
-
-    # If the user to challenge is not found in the database send error message
-    if not p2_id:
+    if p2_id == "No User DB":
         await no_user_db_msg(update, context)
         return
 
-    # Decide which player starts with white pieces
-    p1_is_white = bool(randint(0, 1))
-
-    if len(context.args) > 2 and context.args[1] == ("-w" or "-W"):
-        p1_is_white = True
-    elif len(context.args) > 2 and context.args[1] == ("-b" or "-B"):
-        p1_is_white = False
-
-    mode = 1 if p1_is_white else 2
-
-    p1_username = update.effective_user.full_name
+    p1_is_white = int(get_color(get_mode(context.args)))
 
     await match_request_msg(
         p1_id=str(update.effective_user.id),
         p2_id=p2_id,
-        mode=mode,
+        mode=p1_is_white,
         p1_username=p1_username,
         update=update,
         context=context,
