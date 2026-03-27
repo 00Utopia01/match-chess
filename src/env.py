@@ -65,8 +65,7 @@ def setup() -> Env:
     log.info("Loading env variables...")
 
     if not load_dotenv():
-        log.critical("No .env file found (could be in a sub directory)")
-        sys.exit(1)
+        log.debug("No .env file found (could be in a sub directory)")
 
     _token = os.getenv("TELEGRAM_TOKEN")
     _user = os.getenv("DB_USER")
