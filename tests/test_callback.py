@@ -3,90 +3,91 @@
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-from pytest_mock import MockerFixture
 
 from src import callback
 
-
-@pytest.mark.asyncio
-async def test_handle_euela_accept_failure():
-    """This functions tests the initial returns on accept_euela func"""
-    update = MagicMock()
-    update.callback_query = None
-    context = MagicMock()
-
-    await callback.handle_euela_accept(update, context)
+# from pytest_mock import MockerFixture
 
 
-@pytest.mark.asyncio
-async def test_handle_euela_accept_success():
-    """This function handles the successful cases on accept_euela function"""
-    update = MagicMock()
-    context = MagicMock()
+# @pytest.mark.asyncio
+# async def test_handle_euela_accept_failure():
+#     """This functions tests the initial returns on accept_euela func"""
+#     update = MagicMock()
+#     update.callback_query = None
+#     context = MagicMock()
 
-    query = MagicMock()
-    query.answer = AsyncMock()
-    query.edit_message_text = AsyncMock()
-
-    update.callback_query = query
-    await callback.handle_euela_accept(update, context)
-
-    query.answer.assert_awaited_once()
-    query.edit_message_text.assert_awaited_once()
+#     await callback.handle_euela_accept(update, context)
 
 
-@pytest.mark.asyncio
-async def test_handle_euela_decline_none_values():
-    """Tests None values on euela_decline function"""
-    update = AsyncMock()
-    context = AsyncMock()
+# @pytest.mark.asyncio
+# async def test_handle_euela_accept_success():
+#     """This function handles the successful cases on accept_euela function"""
+#     update = MagicMock()
+#     context = MagicMock()
 
-    update.callback_query = None
-    update.effective_user = None
+#     query = MagicMock()
+#     query.answer = AsyncMock()
+#     query.edit_message_text = AsyncMock()
 
-    await callback.handle_euela_decline(update, context)
+#     update.callback_query = query
+#     await callback.handle_euela_accept(update, context)
 
-
-@pytest.mark.asyncio
-async def test_handle_euela_decline_case_false(mocker: MockerFixture):
-    """Tests the case on witch the db call return false"""
-
-    update = MagicMock()
-    context = MagicMock()
-
-    query = MagicMock()
-    update.callback_query = query
-
-    update.effective_user = MagicMock()
-    query.edit_message_text = AsyncMock()
-    query.answer = AsyncMock()
-
-    mocker.patch("src.db_manager.MatchesDB.del_user", return_value=False)
-
-    await callback.handle_euela_decline(update, context)
-
-    query.answer.assert_awaited_once()
+#     query.answer.assert_awaited_once()
+#     query.edit_message_text.assert_awaited_once()
 
 
-@pytest.mark.asyncio
-async def test_handle_euela_decline_case_true(mocker: MockerFixture):
-    """Tests the case on witch the db call returns true"""
+# @pytest.mark.asyncio
+# async def test_handle_euela_decline_none_values():
+#     """Tests None values on euela_decline function"""
+#     update = AsyncMock()
+#     context = AsyncMock()
 
-    update = MagicMock()
-    context = MagicMock()
+#     update.callback_query = None
+#     update.effective_user = None
 
-    query = MagicMock()
-    update.callback_query = query
+#     await callback.handle_euela_decline(update, context)
 
-    update.effective_user = MagicMock()
-    query.edit_message_text = AsyncMock()
-    query.answer = AsyncMock()
 
-    mocker.patch("src.db_manager.MatchesDB.del_user", return_value=True)
+# @pytest.mark.asyncio
+# async def test_handle_euela_decline_case_false(mocker: MockerFixture):
+#     """Tests the case on witch the db call return false"""
 
-    await callback.handle_euela_decline(update, context)
+#     update = MagicMock()
+#     context = MagicMock()
 
-    query.answer.assert_awaited_once()
+#     query = MagicMock()
+#     update.callback_query = query
+
+#     update.effective_user = MagicMock()
+#     query.edit_message_text = AsyncMock()
+#     query.answer = AsyncMock()
+
+#     mocker.patch("src.db_manager.MatchesDB.del_user", return_value=False)
+
+#     await callback.handle_euela_decline(update, context)
+
+#     query.answer.assert_awaited_once()
+
+
+# @pytest.mark.asyncio
+# async def test_handle_euela_decline_case_true(mocker: MockerFixture):
+#     """Tests the case on witch the db call returns true"""
+
+#     update = MagicMock()
+#     context = MagicMock()
+
+#     query = MagicMock()
+#     update.callback_query = query
+
+#     update.effective_user = MagicMock()
+#     query.edit_message_text = AsyncMock()
+#     query.answer = AsyncMock()
+
+#     mocker.patch("src.db_manager.MatchesDB.del_user", return_value=True)
+
+#     await callback.handle_euela_decline(update, context)
+
+#     query.answer.assert_awaited_once()
 
 
 @pytest.mark.asyncio

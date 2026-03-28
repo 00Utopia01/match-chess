@@ -15,14 +15,22 @@ from telegram.ext import (
 
 from command.debug.caps import caps
 from command.debug.echo import echo
-from command.eula import eula
+from command.eula import (
+    del_message_and_optout_callback,
+    del_message_and_register_callback,
+    eula,
+)
 from command.help import command_list as help_command
 from command.play import challenge_user, play
-from command.start import start
+from command.register import register
+from command.start import (
+    start,
+    start_eula_callback,
+    start_optout_callback,
+    start_register_callback,
+)
 from src.callback import (
     handle_accept_match,
-    handle_euela_accept,
-    handle_euela_decline,
     handle_refuse_match,
 )
 from src.env import ENV as env
@@ -40,21 +48,31 @@ if __name__ == "__main__":
     play_handler = CommandHandler("play", play)
     challenge_handler = CommandHandler("challenge_user", challenge_user)
     eula_handler = CommandHandler("eula", eula)
+    register_handler = CommandHandler("register", register)
 
     echo_handler = MessageHandler(filters.TEXT & (~filters.COMMAND), echo)
     caps_handler = CommandHandler("caps", caps)
 
-    accept_eula_handler = CallbackQueryHandler(
-        handle_euela_accept, pattern=r"^usr:accept_eula$"
-    )
-    decline_eula_handler = CallbackQueryHandler(
-        handle_euela_decline, pattern=r"^usr:decline_eula$"
-    )
     accept_match_handler = CallbackQueryHandler(
         handle_accept_match, pattern=r"^usr:accept_match_(\w+)_([12])_(\w+(\s*.*)*)$"
     )
     refuse_match_handler = CallbackQueryHandler(
         handle_refuse_match, pattern=r"^usr:refuse_match_(\w+)_([12])_(\w+(\s*.*)*)$"
+    )
+    start_optout_query_handler = CallbackQueryHandler(
+        start_optout_callback, pattern=r"^usr:start_optout$"
+    )
+    start_eula_query_handler = CallbackQueryHandler(
+        start_eula_callback, pattern=r"^usr:start_eula$"
+    )
+    start_register_query_handler = CallbackQueryHandler(
+        start_register_callback, pattern=r"^usr:start_register$"
+    )
+    del_and_start_optout_query_handler = CallbackQueryHandler(
+        del_message_and_optout_callback, pattern=r"^usr:del_and_start_optout$"
+    )
+    del_and_start_register_query_handler = CallbackQueryHandler(
+        del_message_and_register_callback, pattern=r"^usr:del_and_start_register$"
     )
 
     application.add_handler(echo_handler)
@@ -66,12 +84,17 @@ if __name__ == "__main__":
 
     application.add_handler(start_handler)
     application.add_handler(eula_handler)
+    application.add_handler(register_handler)
 
-    # application.add_handler(CallbackQueryHandler(callback_finder))
-    application.add_handler(accept_eula_handler)
-    application.add_handler(decline_eula_handler)
     application.add_handler(accept_match_handler)
     application.add_handler(refuse_match_handler)
+
+    application.add_handler(start_optout_query_handler)
+    application.add_handler(start_eula_query_handler)
+    application.add_handler(start_register_query_handler)
+
+    application.add_handler(del_and_start_optout_query_handler)
+    application.add_handler(del_and_start_register_query_handler)
 
     # Running >--------------------------------
     try:

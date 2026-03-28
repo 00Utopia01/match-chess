@@ -7,54 +7,6 @@ from src.chess_logic import create_board, get_board
 from src.db_manager import DB as db
 from src.logger import LOGGER as log
 
-# Message >----------------------------
-
-
-async def handle_euela_accept(update: Update, _context: ContextTypes.DEFAULT_TYPE):
-    """positive response to euela query"""
-    query = update.callback_query
-
-    if query is None:
-        return
-
-    await query.answer()
-
-    await query.edit_message_text(
-        text="<b>You succesfully accepted EULA!</b>", parse_mode="HTML"
-    )
-
-
-async def handle_euela_decline(update: Update, _context: ContextTypes.DEFAULT_TYPE):
-    """negative response to euela query"""
-    # here goes the logic that removes the user from the database
-
-    query = update.callback_query
-
-    if query is None or update.effective_user is None:
-        return
-
-    await query.answer()
-
-    if not db.del_user(user_id=str(update.effective_user.id)):
-        await query.edit_message_text(
-            text=(
-                "Sorry but we can't find your account in our database \n"
-                "This could happen only in you are not logged in \n"
-                "<i>if yuou want you can use /start to log-in again</i>"
-            ),
-            parse_mode="HTML",
-        )
-    else:
-        await query.edit_message_text(
-            text=(
-                "<b>You refused EULA!</b>\n"
-                "Your data have been removed from our database\n"
-                "<i>If you want to use this bot again use /start</i>"
-            ),
-            parse_mode="HTML",
-        )
-
-
 # Logic >---------------------------
 
 
