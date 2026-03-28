@@ -1,3 +1,5 @@
+"""Tests for callback.py"""
+
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -156,6 +158,7 @@ async def test_handle_refuse_match_update_error():
 
 @pytest.mark.asyncio
 async def test_handle_refuse_match_success():
+    """Test for succesful function call"""
     update = MagicMock()
     context = MagicMock()
 
