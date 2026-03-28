@@ -13,8 +13,7 @@ from src.logger import LOGGER as log
 
 
 async def self_match_msg(update: Update):
-    """message sent when self_match error occur"""
-
+    """Message sent when a player tryies to challenge himself"""
     if update.message is None:
         return
 
@@ -23,7 +22,7 @@ async def self_match_msg(update: Update):
 
 
 async def no_user_db_msg(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """message sent when the user is not in the DB"""
+    """Message sent when fetching the opponent user fails"""
 
     if update.effective_chat is None:
         return
@@ -42,22 +41,27 @@ async def no_user_db_msg(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 def create_button(
-    p1_id: str, mode: tuple[int, bool], p1_firstname: str
+    p1_id: str, mode: str, p1_firstname: str
 ) -> InlineKeyboardMarkup | None:
-    """create button layout for match_request_msg()"""
+    """Create button layout for match_request_msg()"""
 
     if not p1_id.isdigit():
         log.debug("Invalid P1_ID in create_button()")
         return None
-    if mode[0] != 1 and mode[0] != 2:
-        log.debug("Invalid Mode in create_button()")
-        return None
+
+    if mode not in ("white", "black"):
+        log.error("Invalid mode cannot be setted into callback: %s", mode)
+
+    # 1 = p1_id starts as white, 2 = 1 = p1_id starts as black
+    mode_setting = 1 if mode == "white" else 2
 
     accept_button = InlineKeyboardButton(
-        "I accept", callback_data=f"usr:accept_match_{p1_id}_{mode[0]}_{p1_firstname}"
+        "I accept",
+        callback_data=f"usr:accept_match_{p1_id}_{mode_setting}_{p1_firstname}",
     )
     refuse_button = InlineKeyboardButton(
-        "I refuse", callback_data=f"usr:refuse_match_{p1_id}_{mode[0]}_{p1_firstname}"
+        "I refuse",
+        callback_data=f"usr:refuse_match_{p1_id}_{mode_setting}_{p1_firstname}",
     )
 
     options_layout = [[accept_button, refuse_button]]
@@ -65,29 +69,12 @@ def create_button(
     return InlineKeyboardMarkup(options_layout)
 
 
-def set_text(p1_firstname: str, mode: tuple[int, bool]) -> str:
-    """create text for match_request_msg()"""
-    _text = f"{p1_firstname} invited you to a match"
-
-    if mode[0] != 1 and mode[0] != 2:
-        log.debug("Invalid Mode Code in set_text()")
-        return ""
-
-    if mode[1]:
-        if mode[0] == 1:
-            _text = _text + " where you are black"
-        else:
-            _text = _text + " where you are white"
-
-    return _text
-
-
 # pylint: disable=too-many-arguments
 async def match_request_msg(
     *,
     p1_id: str,
     p2_id: str,
-    mode: tuple[int, bool],
+    mode: str,
     p1_firstname: str,
     update: Update,
     context: ContextTypes.DEFAULT_TYPE,
@@ -96,10 +83,11 @@ async def match_request_msg(
     if update.effective_user is None:
         return
 
-    text = set_text(p1_firstname, mode)
+    if mode not in ("white", "black"):
+        log.error("Invalid mode cannot be sent: %s", mode)
 
-    if text == "":
-        return
+    opponents_mode = "black" if mode == "white" else "white"
+    message = f"{p1_firstname} invited you to a match, where you are {opponents_mode}"
 
     button_interface = create_button(p1_id, mode, p1_firstname)
 
@@ -108,7 +96,7 @@ async def match_request_msg(
 
     await context.bot.send_message(
         chat_id=p2_id,
-        text=text,
+        text=message,
         reply_markup=button_interface,
     )
 
@@ -146,62 +134,12 @@ async def play(update: Update, context: ContextTypes.DEFAULT_TYPE):
     return
 
 
-def edit_username(username: str) -> str:
-    """edit username args"""
-    if username[0] == "@":
-        username = username[1:]
-
-    if username.isdigit():
-        temp = db.get_username(username)
-        if isinstance(temp, str):
-            username = temp
-        else:
-            log.debug("No username found in db")
-            return ""
-    return username
-
-
-def get_color(mode: str) -> tuple[int, bool]:
-    """from a mode string get the color of p1"""
-    is_forced = False
-    match mode:
-        case "-w":
-            p1_is_white = int(1)
-            is_forced = True
-        case "-b":
-            p1_is_white = int(0)
-            is_forced = True
-        case _:
-            p1_is_white = randint(0, 1)
-    return (p1_is_white, is_forced)
-
-
-def get_mode(args: list[str]) -> str:
-    """get from args the mode string if is formated correctly"""
-    mode = ""
-    if len(args) >= 2 and args[1] == ("-w" or "-W"):
-        mode = "-w"
-    if len(args) >= 2 and args[1] == ("-b" or "-B"):
-        mode = "-b"
-    return mode
-
-
-def get_p2_id(*, p1_username: str, p2_username: str) -> str:
-    """get id 2 from db"""
-    if p2_username == p1_username:
-        return "Self Match"
-    p2_id = db.get_user_id(p2_username)
-    if p2_id is None:
-        return "No User DB"
-    return p2_id
-
-
 async def challenge_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """make a player (p1) send a challenge request to the user with the specified id (p2)
     the challenged user will receive a message with an identifier of the user who sent the challenge
     and two buttons to accept/decline the request
 
-    Syntax: /challenge_user <user_id> [-w | -W | -b | -B]
+    Syntax: /challenge_user <user_id | username> [-w | -W | -b | -B]
 
     Args:
         user_id : the number associated with each player when they send /start
@@ -216,32 +154,50 @@ async def challenge_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
     if update.message is None or update.effective_chat is None:
         return
-    if update.effective_user.username is None:
-        return
 
     p1_firstname = update.effective_user.first_name
+    target_player = context.args[0]
 
-    p1_username = update.effective_user.username
-    p2_username = edit_username(context.args[0])
+    sender_id = str(update.effective_user.id)
+    receiver_id = (
+        target_player
+        if target_player.isdigit()
+        else db.get_user_id(target_player.removeprefix("@"))
+    )
 
-    if p2_username == "":
-        log.debug("no username faund with this id")
-        return
-
-    p2_id = get_p2_id(p2_username=p2_username, p1_username=p1_username)
-
-    if p2_id == "Self Match":
-        await self_match_msg(update)
-        return
-    if p2_id == "No User DB":
+    if not receiver_id:
         await no_user_db_msg(update, context)
+        log.error("Failed to fetch opponent's id, : %s", receiver_id)
         return
 
-    mode = get_color(get_mode(context.args))
+    if db.get_active_match(sender_id, receiver_id):
+        log.error(
+            "Cannot send match request when a match already exists between the two users: %s, %s",
+            sender_id,
+            receiver_id,
+        )
+        # Send a message to inform that an ongoing match exists
+        return
+
+    if sender_id == receiver_id:
+        await self_match_msg(update)
+        log.error("User:%s tried to challenge himself", sender_id)
+        return
+
+    # Set the required mode if it's part of the argouments
+    if len(context.args) >= 2:
+        required_mode = str(context.args[1]).lower()
+        if required_mode not in ("-w", "-b"):
+            log.error("Invalid mode format: %s", required_mode)
+            # Send message to inform that mode must be in the right format
+            return
+        mode = "white" if required_mode == "-w" else "black"
+    else:  # Set a randomic mode if it's not explicitly set
+        mode = "white" if randint(0, 1) else "black"
 
     await match_request_msg(
-        p1_id=str(update.effective_user.id),
-        p2_id=p2_id,
+        p1_id=sender_id,
+        p2_id=receiver_id,
         mode=mode,
         p1_firstname=p1_firstname,
         update=update,
