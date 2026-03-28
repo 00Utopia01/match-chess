@@ -60,7 +60,7 @@ class MatchesDB:
             log.error("user_id must be a string")
             return False
 
-        if username and not isinstance(username, str):
+        if not username or not isinstance(username, str):
             log.error("username must be a string")
             return False
 
