@@ -441,7 +441,7 @@ class MatchesDB:
                 result = cursor.fetchone()
 
                 if result is None:
-                    log.error(
+                    log.debug(
                         "No active match found between the specified users: %s, %s",
                         id_user1,
                         id_user2,
