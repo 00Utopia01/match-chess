@@ -3,13 +3,10 @@
 from telegram import Update
 from telegram.ext import ContextTypes
 
-# from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, filters
-# from telegram.error import BadRequest, InvalidToken, NetworkError, TelegramError
-
 
 async def command_list(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Sends the user a list of all commands"""
-    if not update.message or not update.effective_chat:
+    if not update.effective_chat:
         return
 
     await context.bot.send_message(

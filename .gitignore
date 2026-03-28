@@ -7,3 +7,4 @@ run-lint.sh
 run-lint.ps1
 test/
 log/
+.coverage

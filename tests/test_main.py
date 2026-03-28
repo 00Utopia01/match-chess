@@ -9,22 +9,6 @@ import main
 
 
 @pytest.mark.asyncio
-async def test_start(mocker: MockerFixture):
-    """ "Assert if the callback calls the send_message function"""
-    # Arrange
-    update = mocker.Mock()
-    context = mocker.Mock()
-    update.effective_chat.id = 12345
-    context.bot.send_message = AsyncMock()
-    # Act
-    await main.start(update, context)
-    # Assert
-    context.bot.send_message.assert_called_once_with(
-        chat_id=12345, text="I'm a bot, please talk to me!"
-    )
-
-
-@pytest.mark.asyncio
 async def test_echo(mocker: MockerFixture):
     """Assert if the callback calls send_message"""
     # Arrange

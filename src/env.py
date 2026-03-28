@@ -4,60 +4,105 @@ This module hendle .env loading and reading
 
 import os
 import re
+import sys
 
 from dotenv import load_dotenv
 
 from src.logger import LOGGER as log
 
 
-def take_path_input():
-    """get input path for .env file"""
-    return input("direct path to file: ")
+class Env:
+    """Basic class to store .env variables"""
 
+    # pylint: disable=too-many-arguments
+    def __init__(self, *, token: str, user: str, host: str, psw: str, db: str):
+        self.__token: str = token
+        self.__db_user: str = user
+        self.__db_host: str = host
+        self.__db_password: str = psw
+        self.__db_database: str = db
 
-def set_path() -> str:
-    """return the path for .env file"""
+    def get_token(self) -> str:
+        """get telegram token"""
+        return self.__token
 
-    while True:
-        path = take_path_input()
-        if path[-4:] == ".env":
-            log.debug('custom path is "%s"', path)
-            break
+    def get_user(self) -> str:
+        """get database user"""
+        return self.__db_user
 
-        print("The specified path does not end with a .env file, retry")
-    return path
+    def get_host(self) -> str:
+        """get database host"""
+        return self.__db_host
 
+    def get_password(self) -> str:
+        """get database password"""
+        return self.__db_password
 
-def get_token() -> str | None:
-    """get token from .env file or environment variable"""
-
-    token = os.getenv("TELEGRAM_TOKEN")
-
-    if token is not None:
-        return token
-
-    # log.error("TELEGRAM_TOKEN variable not found or empty")
-
-    # try to find .env file
-    if not load_dotenv():
-        log.error(
-            "No .env file in default path (could be empty), overriding with custom path "
-        )
-        # if .env cannot be found, ask the user to input .env path
-        if not load_dotenv(dotenv_path=set_path()):
-            log.critical("No '.env' file found in custom path (could be empty)")
-            return None
-
-    token = os.getenv("TELEGRAM_TOKEN")
-    return token
+    def get_database(self) -> str:
+        """get database name"""
+        return self.__db_database
 
 
 def check_token(token: str | None) -> bool:
     """chek if token is None or in a wrong format"""
     regex_const = "^[0-9]{8,10}:[a-zA-Z0-9_-]{35}$"
 
-    if token is None or re.fullmatch(regex_const, token) is None:
-        log.critical("Invalid token formatting")
+    if token is None:
+        log.critical("No TOKEN found in env variables (could be empty)")
+        return False
+
+    if re.fullmatch(regex_const, token) is None:
+        log.critical("Invalid TOKEN formatting")
         return False
 
     return True
+
+
+def setup() -> Env:
+    """Load all env variables"""
+    is_bootable = True
+
+    log.info("Loading env variables...")
+
+    if not load_dotenv():
+        log.debug("No .env file found (could be in a sub directory)")
+
+    _token = os.getenv("TELEGRAM_TOKEN")
+    _user = os.getenv("DB_USER")
+    _host = os.getenv("DB_HOST")
+    _password = os.getenv("DB_PASSWORD")
+    _database = os.getenv("DB_DATABASE")
+
+    if not check_token(_token):
+        is_bootable = False
+
+    if _user is None:
+        log.critical("No DB_USER found in env variables (could be empty)")
+        is_bootable = False
+
+    if _host is None:
+        log.critical("No DB_HOST found in env variables (could be empty)")
+        is_bootable = False
+
+    if _password is None:
+        log.critical("No DB_PASSWORD found in env variables (could be empty)")
+        is_bootable = False
+
+    if _database is None:
+        log.critical("No DB_DATABASE found in env variables (could be empty)")
+        is_bootable = False
+
+    if not is_bootable:
+        sys.exit(1)
+
+    env = Env(
+        token=str(_token),
+        user=str(_user),
+        host=str(_host),
+        psw=str(_password),
+        db=str(_database),
+    )
+    return env
+
+
+ENV = setup()
