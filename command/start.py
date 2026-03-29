@@ -1,5 +1,7 @@
 """Welcoming function"""
 
+# pylint: disable=duplicate-code
+
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import ContextTypes
 
@@ -14,10 +16,10 @@ from src.logger import LOGGER as log
 def create_button() -> InlineKeyboardMarkup:
     """Create button markup"""
     optout_button = InlineKeyboardButton("optout", callback_data="usr:start_optout")
+    eula_button = InlineKeyboardButton("eula", callback_data="usr:start_eula")
     register_button = InlineKeyboardButton(
         "register", callback_data="usr:start_register"
     )
-    eula_button = InlineKeyboardButton("eula", callback_data="usr:start_eula")
 
     options_layout = [[optout_button, eula_button, register_button]]
 
@@ -64,11 +66,11 @@ async def start_optout_callback(update: Update, context: ContextTypes.DEFAULT_TY
         log.error("No query foud in start_optout_callback()")
         return
 
+    await query.answer()
     await context.bot.delete_message(
         chat_id=update.effective_user.id,
         message_id=query.message.message_id,
     )
-    await query.answer()
     await optout(update, context)
 
 
@@ -83,12 +85,12 @@ async def start_eula_callback(update: Update, context: ContextTypes.DEFAULT_TYPE
         log.error("No query or query.message foud in start_eula_callback()")
         return
 
+    await query.answer()
     await context.bot.delete_message(
         chat_id=update.effective_user.id,
         message_id=query.message.message_id,
     )
 
-    await query.answer()
     await eula(update, context)
 
 
@@ -104,10 +106,10 @@ async def start_register_callback(update: Update, context: ContextTypes.DEFAULT_
         log.error("No query or query.message foud in start_register_callback()")
         return
 
+    await query.answer()
     await context.bot.delete_message(
         chat_id=update.effective_user.id,
         message_id=query.message.message_id,
     )
 
-    await query.answer()
     await register(update, context)

@@ -1,5 +1,7 @@
 """Test for eula.py"""
 
+# pylint: disable=duplicate-code
+
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
