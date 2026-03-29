@@ -72,7 +72,7 @@ def test_ensure_connection(empty_db, mocker: MockerFixture):
 def test_insert_and_get_user(empty_db):
     """Test insertion of a user and retreiving it's data"""
     # Test insertion
-    assert empty_db.insert_user("123", "test_username") is True
+    assert empty_db.insert_user("123", "test_username", "test_fullname") is True
 
     # Test retrieval
     username = empty_db.get_username("123")
@@ -80,17 +80,17 @@ def test_insert_and_get_user(empty_db):
 
 
 params = [
-    {"id": "", "username": "test_name", "expected_res": False},
-    {"id": "456456", "username": "", "expected_res": False},
-    {"id": "test_name", "username": "456456", "expected_res": False},
-    {"id": "456456", "username": "test_name", "expected_res": True},
+    {"id": "", "username": "test_name", "fullname" : "test_fullname", "expected_res": False},
+    {"id": "456456", "username": "", "fullname" : "test_fullname", "expected_res": False},
+    {"id": "test_name", "username": "456456", "fullname" : "test_fullname", "expected_res": False},
+    {"id": "456456", "username": "test_name", "fullname" : "test_fullname", "expected_res": True},
 ]
 
 
 @pytest.mark.parametrize("param", params)
 def test_insert_invalid_params(empty_db, param):
     """Pass params to the insert function and assert the return value"""
-    assert empty_db.insert_user(param["id"], param["username"]) is param["expected_res"]
+    assert empty_db.insert_user(param["id"], param["username"], param["fullname"]) is param["expected_res"]
 
 
 def test_insert_duplicate_entry(empty_db, mocker: MockerFixture):
@@ -98,8 +98,8 @@ def test_insert_duplicate_entry(empty_db, mocker: MockerFixture):
     spy_rollback = mocker.spy(empty_db.db, "rollback")
     mock_log = mocker.patch("src.db_manager.log.error")
 
-    insert1 = empty_db.insert_user("123", "test_username")
-    insert2 = empty_db.insert_user("123", "test_username")
+    insert1 = empty_db.insert_user("123", "test_username", "test_fullname")
+    insert2 = empty_db.insert_user("123", "test_username", "test_fullname")
 
     assert insert1 is True
     assert insert2 is False
@@ -126,7 +126,7 @@ def test_insert_other_error(empty_db, mocker: MockerFixture):
 
     mock_cursor.execute.side_effect = db_error
 
-    result = empty_db.insert_user("123", "test_username")
+    result = empty_db.insert_user("123", "test_username", "test_fullname")
 
     assert result is False
     mock_log.error.assert_called_once()
@@ -136,7 +136,7 @@ def test_insert_other_error(empty_db, mocker: MockerFixture):
 def test_del_user_success(empty_db, mocker: MockerFixture):
     """Test the deletion of an existent user"""
     mock_log = mocker.patch("src.db_manager.log")
-    empty_db.insert_user("123", "test_username")
+    empty_db.insert_user("123", "test_username", "test_fullname")
 
     assert empty_db.del_user("123") is True
     mock_log.debug.assert_called_once()
@@ -153,7 +153,7 @@ def test_del_user_fail(empty_db, mocker: MockerFixture):
 def test_get_username(empty_db, mocker: MockerFixture):
     """Retreival of a user that doesn't exist"""
     mock_log = mocker.patch("src.db_manager.log")
-    empty_db.insert_user("123", "test_username")
+    empty_db.insert_user("123", "test_username", "test_fullname")
     user_id1 = "123"
     user_id2 = "99999"
 
@@ -187,7 +187,7 @@ def test_get_username_wrong_type(empty_db, mocker: MockerFixture):
 
 def test_get_user_id_success(empty_db):
     """Test the retrieval of the id of an existent user"""
-    empty_db.insert_user("123", "test_username")
+    empty_db.insert_user("123", "test_username", "test_fullname")
 
     user_id = empty_db.get_user_id("test_username")
 
@@ -261,8 +261,8 @@ parameters = [
 def test_start_match_parameters(empty_db, param):
     """Pass wrong parameters to start_match"""
     # Insert the users in User to avoid the foreing key constraint on UserMatch
-    empty_db.insert_user(param["id_white"], "usr1")
-    empty_db.insert_user(param["id_black"], "usr2")
+    empty_db.insert_user(param["id_white"], "usr1", "test_fullname")
+    empty_db.insert_user(param["id_black"], "usr2", "test_fullname")
 
     assert (
         empty_db.start_match(param["id_white"], param["id_black"])
@@ -275,8 +275,8 @@ def test_start_match_ongoing_match(empty_db, mocker: MockerFixture):
     mock_log = mocker.patch("src.db_manager.log")
 
     # Start an active match between two users
-    empty_db.insert_user("123", "usr1")
-    empty_db.insert_user("1234", "usr2")
+    empty_db.insert_user("123", "usr1", "test_fullname")
+    empty_db.insert_user("1234", "usr2", "test_fullname")
 
     result1 = empty_db.start_match("123", "1234")
     result2 = empty_db.start_match("123", "1234")
@@ -292,8 +292,8 @@ def test_start_match_ongoing_match(empty_db, mocker: MockerFixture):
 
 def test_start_match_error(empty_db, mocker: MockerFixture):
     """Raise an error while starting a match"""
-    empty_db.insert_user("123", "usr1")
-    empty_db.insert_user("1234", "usr2")
+    empty_db.insert_user("123", "usr1", "test_fullname")
+    empty_db.insert_user("1234", "usr2", "test_fullname")
 
     mock_log = mocker.patch("src.db_manager.log")
 
@@ -315,10 +315,10 @@ def test_start_match_error(empty_db, mocker: MockerFixture):
 
 def test_get_matches(empty_db):
     """Query two matches between two users"""
-    empty_db.insert_user("123", "usr1")
-    empty_db.insert_user("1234", "usr2")
+    empty_db.insert_user("123", "usr1", "test_fullname")
+    empty_db.insert_user("1234", "usr2", "test_fullname")
     empty_db.start_match("123", "1234")
-    empty_db.insert_user("12345", "usr3")
+    empty_db.insert_user("12345", "usr3", "test_fullname")
     empty_db.start_match("123", "12345")
 
     matches_list = empty_db.get_matches("123", "1234")
@@ -332,8 +332,8 @@ def test_get_matches(empty_db):
 def test_get_matches_wrong_type(empty_db, mocker: MockerFixture):
     """Handle dict return type"""
     mock_log = mocker.patch("src.db_manager.log")
-    empty_db.insert_user("123", "usr1")
-    empty_db.insert_user("1234", "usr2")
+    empty_db.insert_user("123", "usr1", "test_fullname")
+    empty_db.insert_user("1234", "usr2", "test_fullname")
     empty_db.start_match("123", "1234")
     # Make cursor.fetchone return a dict instead of a tuple
     mock_cursor = mocker.MagicMock()
@@ -352,8 +352,8 @@ def test_get_matches_wrong_type(empty_db, mocker: MockerFixture):
 def test_get_matches_error(empty_db, mocker: MockerFixture):
     """Raise an error while querying matches"""
     mock_log = mocker.patch("src.db_manager.log")
-    empty_db.insert_user("123", "usr1")
-    empty_db.insert_user("1234", "usr2")
+    empty_db.insert_user("123", "usr1", "test_fullname")
+    empty_db.insert_user("1234", "usr2", "test_fullname")
     empty_db.start_match("123", "1234")
 
     err = Error()
@@ -372,8 +372,8 @@ def test_get_matches_error(empty_db, mocker: MockerFixture):
 
 def test_get_match_data_success(empty_db):
     """Fetch a dict with get_match_data containing all the data"""
-    empty_db.insert_user("123", "usr1")
-    empty_db.insert_user("1234", "usr2")
+    empty_db.insert_user("123", "usr1", "test_fullname")
+    empty_db.insert_user("1234", "usr2", "test_fullname")
     empty_db.start_match("123", "1234")
     active_match_id = empty_db.get_active_match("123", "1234")
 
@@ -402,8 +402,8 @@ def test_get_match_data_invalid_input(empty_db):
 
 def test_stop_match_by_ids(empty_db):
     """Stop match between two users using user's ids"""
-    empty_db.insert_user("123", "usr1")
-    empty_db.insert_user("1234", "usr2")
+    empty_db.insert_user("123", "usr1", "test_fullname")
+    empty_db.insert_user("1234", "usr2", "test_fullname")
     empty_db.start_match("123", "1234")
 
     active_match_id1 = empty_db.get_active_match("123", "1234")
@@ -417,8 +417,8 @@ def test_stop_match_by_ids(empty_db):
 
 def test_stop_match_by_match_id(empty_db):
     """Test stop_match using match_id"""
-    empty_db.insert_user("123", "usr1")
-    empty_db.insert_user("1234", "usr2")
+    empty_db.insert_user("123", "usr1", "test_fullname")
+    empty_db.insert_user("1234", "usr2", "test_fullname")
     empty_db.start_match("123", "1234")
 
     active_match_id1 = empty_db.get_active_match("123", "1234")
@@ -440,8 +440,8 @@ params = [
 @pytest.mark.parametrize("param", params)
 def test_stop_match_param(empty_db, param):
     """Pass various parameters to stop_match"""
-    empty_db.insert_user("123", "usr1")
-    empty_db.insert_user("1234", "usr2")
+    empty_db.insert_user("123", "usr1", "test_fullname")
+    empty_db.insert_user("1234", "usr2", "test_fullname")
     empty_db.start_match("123", "1234")
 
     result = empty_db.stop_match(
@@ -456,8 +456,8 @@ def test_stop_match_param(empty_db, param):
 def test_stop_match_error(empty_db, mocker: MockerFixture):
     """Raise an error while stopping a match"""
     mock_log = mocker.patch("src.db_manager.log")
-    empty_db.insert_user("123", "usr1")
-    empty_db.insert_user("1234", "usr2")
+    empty_db.insert_user("123", "usr1", "test_fullname")
+    empty_db.insert_user("1234", "usr2", "test_fullname")
     empty_db.start_match("123", "1234")
 
     err = Error("Some error")
@@ -476,8 +476,8 @@ def test_stop_match_error(empty_db, mocker: MockerFixture):
 
 def test_get_match_chessboard_success(empty_db):
     """Get chessboard fen stored in a match"""
-    empty_db.insert_user("123", "usr1")
-    empty_db.insert_user("1234", "usr2")
+    empty_db.insert_user("123", "usr1", "test_fullname")
+    empty_db.insert_user("1234", "usr2", "test_fullname")
     empty_db.start_match("123", "1234")
 
     match_id = empty_db.get_active_match("123", "1234")
@@ -489,8 +489,8 @@ def test_get_match_chessboard_success(empty_db):
 def test_get_match_chessboard_no_match_id(empty_db, mocker: MockerFixture):
     """Try to get_match_chessboard without any match_id"""
     mock_log = mocker.patch("src.db_manager.log")
-    empty_db.insert_user("123", "usr1")
-    empty_db.insert_user("1234", "usr2")
+    empty_db.insert_user("123", "usr1", "test_fullname")
+    empty_db.insert_user("1234", "usr2", "test_fullname")
     empty_db.start_match("123", "1234")
 
     chessboard = empty_db.get_match_chessboard(None)
@@ -503,8 +503,8 @@ def test_get_match_chessboard_empty_chessboard(empty_db, mocker: MockerFixture):
     """Make the db return an empty chessboard"""
     mock_log = mocker.patch("src.db_manager.log")
 
-    empty_db.insert_user("123", "usr1")
-    empty_db.insert_user("1234", "usr2")
+    empty_db.insert_user("123", "usr1", "test_fullname")
+    empty_db.insert_user("1234", "usr2", "test_fullname")
     empty_db.start_match("123", "1234")
     match_id = empty_db.get_active_match("123", "1234")
 
@@ -524,8 +524,8 @@ def test_get_match_chessboard_wrong_type(empty_db, mocker: MockerFixture):
     """Make the db return a dict instead of a tuple"""
     mock_log = mocker.patch("src.db_manager.log")
 
-    empty_db.insert_user("123", "usr1")
-    empty_db.insert_user("1234", "usr2")
+    empty_db.insert_user("123", "usr1", "test_fullname")
+    empty_db.insert_user("1234", "usr2", "test_fullname")
     empty_db.start_match("123", "1234")
     match_id = empty_db.get_active_match("123", "1234")
 
@@ -547,8 +547,8 @@ def test_get_match_chessboard_error(empty_db, mocker: MockerFixture):
     """Raise an error while querying a chessboard from a match"""
     mock_log = mocker.patch("src.db_manager.log")
 
-    empty_db.insert_user("123", "usr1")
-    empty_db.insert_user("1234", "usr2")
+    empty_db.insert_user("123", "usr1", "test_fullname")
+    empty_db.insert_user("1234", "usr2", "test_fullname")
     empty_db.start_match("123", "1234")
     match_id = empty_db.get_active_match("123", "1234")
 
@@ -572,8 +572,8 @@ def test_add_move_success(empty_db, mocker: MockerFixture):
     """Add a move successfully"""
     mock_log = mocker.patch("src.db_manager.log")
 
-    empty_db.insert_user("1", "p1")
-    empty_db.insert_user("2", "p2")
+    empty_db.insert_user("1", "p1", "test_fullname")
+    empty_db.insert_user("2", "p2", "test_fullname")
     empty_db.start_match("1", "2")
     match_id = empty_db.get_active_match("1", "2")
 
@@ -617,8 +617,8 @@ def test_add_move_illegal_move(empty_db, mocker: MockerFixture):
     """Try to add an illegal move"""
     mock_log = mocker.patch("src.db_manager.log")
 
-    empty_db.insert_user("1", "p1")
-    empty_db.insert_user("2", "p2")
+    empty_db.insert_user("1", "p1", "test_fullname")
+    empty_db.insert_user("2", "p2", "test_fullname")
     empty_db.start_match("1", "2")
     match_id = empty_db.get_active_match("1", "2")
 
@@ -635,8 +635,8 @@ def test_add_move_value_error(empty_db, mocker: MockerFixture):
     """Raise ValueError while adding a move"""
     mock_log = mocker.patch("src.db_manager.log")
 
-    empty_db.insert_user("1", "p1")
-    empty_db.insert_user("2", "p2")
+    empty_db.insert_user("1", "p1", "test_fullname")
+    empty_db.insert_user("2", "p2", "test_fullname")
     empty_db.start_match("1", "2")
     match_id = empty_db.get_active_match("1", "2")
 
@@ -653,8 +653,8 @@ def test_add_move_db_error(empty_db, mocker: MockerFixture):
     """Raise an error while adding a move"""
     mock_log = mocker.patch("src.db_manager.log")
 
-    empty_db.insert_user("1", "p1")
-    empty_db.insert_user("2", "p2")
+    empty_db.insert_user("1", "p1", "test_fullname")
+    empty_db.insert_user("2", "p2", "test_fullname")
     empty_db.start_match("1", "2")
     match_id = empty_db.get_active_match("1", "2")
 
@@ -675,8 +675,8 @@ def test_add_move_db_error(empty_db, mocker: MockerFixture):
 
 def test_get_active_match(empty_db):
     """Get the active match between two users"""
-    empty_db.insert_user("123", "usr1")
-    empty_db.insert_user("1234", "usr2")
+    empty_db.insert_user("123", "usr1", "test_fullname")
+    empty_db.insert_user("1234", "usr2", "test_fullname")
 
     active_match_id1 = empty_db.get_active_match("123", "1234")
 
