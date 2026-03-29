@@ -48,7 +48,7 @@ class MatchesDB:
         if not self.db.is_connected():
             self.db.reconnect()
 
-    def insert_user(self, user_id: str, username: str | None) -> bool:
+    def insert_user(self, user_id: str, username: str | None, fullname: str) -> bool:
         """insert a user in User table with specified data"""
 
         # parameter validation
@@ -73,14 +73,14 @@ class MatchesDB:
         try:
             with self.db.cursor() as cursor:
                 if username:
-                    sql = "INSERT INTO User (ID_User, username) VALUES (%s, %s)"
-                    values = (user_id, username)
+                    sql = "INSERT INTO User (ID_User, username, fullname) VALUES (%s, %s, %s)"
+                    values = (user_id, username, fullname)
                 else:
                     sql = (
-                        "INSERT INTO User (ID_User, username) "
-                        "VALUES (%s, CONCAT('_anonymous_', %s, '_'))"
+                        "INSERT INTO User (ID_User, username, fullname) "
+                        "VALUES (%s, CONCAT('_anonymous_', %s, '_'), %s)"
                     )
-                    values = (user_id, user_id)
+                    values = (user_id, user_id, fullname)
                 cursor.execute(sql, values)
                 self.db.commit()
                 return True
@@ -498,7 +498,8 @@ class MatchesDB:
         user_table = """
             CREATE TABLE User (
                 ID_User BIGINT PRIMARY KEY,
-                username VARCHAR(50) UNIQUE NOT NULL
+                username VARCHAR(50) UNIQUE NOT NULL,
+                fullname VARCHAR(50) NOT NULL
             );
         """
 
