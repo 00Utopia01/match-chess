@@ -109,7 +109,12 @@ async def _handle_successful_move(
     match_id = match_data["ID_Match"]
     chessboard.push(chess.Move.from_uci(move_uci))
     db.add_move(match_id, move_uci)
+
     img = get_chessboard_webp(chessboard)
+
+    # Get user's fullname from the db
+    sender_user_data = db.get_user_data(sender_id)
+    receiver_user_data = db.get_user_data(receiver_id)
 
     # Delete old chessboard messages
     await _delete_old_messages(match_id, sender_id, receiver_id, update, context)
@@ -118,7 +123,7 @@ async def _handle_successful_move(
     sender_msg = await context.bot.send_photo(
         chat_id=sender_id,
         photo=img,
-        caption=f"<b>Game Vs p2_fullname</b>\n"
+        caption=f"<b>Game Vs {receiver_user_data["fullname"]}</b>\n"
         f"Your move: {move_uci}\n\n"
         f"<i>Match number: {match_id}</i>",
         parse_mode="HTML",
@@ -127,7 +132,7 @@ async def _handle_successful_move(
     receiver_msg = await context.bot.send_photo(
         chat_id=receiver_id,
         photo=img,
-        caption=f"<b>Game Vs p1_fullname</b>\n"
+        caption=f"<b>Game Vs {sender_user_data["fullname"]}</b>\n"
         f"Opponent's move: {move_uci}\n\n"
         f"<i>Match number: {match_id}</i>",
         parse_mode="HTML",
