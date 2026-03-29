@@ -10,21 +10,21 @@ from src.logger import LOGGER as log
 
 
 async def already_logged_mes_err(
-    message_id: int, user_id: str, context: ContextTypes.DEFAULT_TYPE
+    message_id: int, chat_id: str, context: ContextTypes.DEFAULT_TYPE
 ):
     """send 'alreday logged' message error"""
     await context.bot.edit_message_text(
-        message_id=message_id, chat_id=user_id, text="You are already logged in"
+        message_id=message_id, chat_id=chat_id, text="You are already logged in"
     )
 
 
-async def registration_complete_mes(
-    message_id: int, user_id: str, context: ContextTypes.DEFAULT_TYPE
+async def registration_completed_mes(
+    message_id: int, chat_id: str, context: ContextTypes.DEFAULT_TYPE
 ):
     """send 'registration Complete' message"""
     await context.bot.edit_message_text(
         message_id=message_id,
-        chat_id=user_id,
+        chat_id=chat_id,
         text="Registration completed   <i>Good luck</i>",
         parse_mode="HTML",
     )
@@ -63,7 +63,7 @@ async def register(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     if db.insert_user(user_id, username):
-        await registration_complete_mes(message.id, user_id, context)
+        await registration_completed_mes(message.id, user_id, context)
     else:
         log.error("Something went wrong during db.insert_user() in register()")
         await generic_db_mes_err(message.id, user_id, context)
