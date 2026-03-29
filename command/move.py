@@ -1,12 +1,12 @@
 """Handle /move command, to enable users to make a move by replying to a chessboard message"""
-
-import chess
+from enum import Enum
+import io
 import re
+
 import cairosvg  # type: ignore
+import chess
 import chess.svg
 from PIL import Image
-import io
-from enum import Enum
 from telegram import Update
 from telegram.error import BadRequest
 from telegram.ext import ContextTypes
@@ -69,7 +69,6 @@ async def move_send_messages(
     if not update.message and update.effective_user and update.message.reply_to_message:
         return
 
-    match_id = match_data["ID_Match"]
     white_id, black_id = match_data["white_user1"], match_data["black_user2"]
     chessboard = chess.Board(fen=match_data["chessboard_fen"])
 
@@ -78,6 +77,9 @@ async def move_send_messages(
     receiver_id = black_id if is_white_turn(chessboard.fen()) else white_id
 
     match move_outcome:
+        case MoveOutcome.STALEMATE | MoveOutcome.CHECKMATE:
+            await _handle_game_over(move_outcome, match_data, chessboard, context)
+
         case MoveOutcome.SUCCESS:
             await _handle_successful_move(
                 move_uci, match_data, receiver_id, update=update, context=context
@@ -90,11 +92,6 @@ async def move_send_messages(
         ):
             await context.bot.send_message(
                 chat_id=sender_id, text="Please input a valid move in uci format"
-            )
-
-        case MoveOutcome.STALEMATE | MoveOutcome.CHECKMATE:
-            await _handle_game_over(
-                move_outcome, match_id, white_id, black_id, chessboard, context
             )
 
 
@@ -131,7 +128,7 @@ async def _handle_successful_move(
         chat_id=receiver_id,
         photo=img,
         caption=f"<b>Game Vs p1_fullname</b>\n"
-        f"Your move: {move_uci}\n\n"
+        f"Opponent's move: {move_uci}\n\n"
         f"<i>Match number: {match_id}</i>",
         parse_mode="HTML",
     )
@@ -177,10 +174,11 @@ async def _handle_game_over(
     context: ContextTypes.DEFAULT_TYPE,
 ):
     """Ends the database match and notifies players"""
-    db.stop_match(match_id)
 
     match_id = match_data["ID_Match"]
     white_id, black_id = match_data["white_user1"], match_data["black_user2"]
+
+    db.stop_match(match_id)
 
     if outcome == MoveOutcome.STALEMATE:
         text = MoveOutcome.STALEMATE.value
