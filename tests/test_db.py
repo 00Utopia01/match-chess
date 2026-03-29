@@ -80,17 +80,40 @@ def test_insert_and_get_user(empty_db):
 
 
 params = [
-    {"id": "", "username": "test_name", "fullname" : "test_fullname", "expected_res": False},
-    {"id": "456456", "username": "", "fullname" : "test_fullname", "expected_res": False},
-    {"id": "test_name", "username": "456456", "fullname" : "test_fullname", "expected_res": False},
-    {"id": "456456", "username": "test_name", "fullname" : "test_fullname", "expected_res": True},
+    {
+        "id": "",
+        "username": "test_name",
+        "fullname": "test_fullname",
+        "expected_res": False,
+    },
+    {
+        "id": "456456",
+        "username": "",
+        "fullname": "test_fullname",
+        "expected_res": True,
+    },
+    {
+        "id": "test_name",
+        "username": "456456",
+        "fullname": "test_fullname",
+        "expected_res": False,
+    },
+    {
+        "id": "456456",
+        "username": "test_name",
+        "fullname": "test_fullname",
+        "expected_res": True,
+    },
 ]
 
 
 @pytest.mark.parametrize("param", params)
 def test_insert_invalid_params(empty_db, param):
     """Pass params to the insert function and assert the return value"""
-    assert empty_db.insert_user(param["id"], param["username"], param["fullname"]) is param["expected_res"]
+    assert (
+        empty_db.insert_user(param["id"], param["username"], param["fullname"])
+        is param["expected_res"]
+    )
 
 
 def test_insert_duplicate_entry(empty_db, mocker: MockerFixture):
