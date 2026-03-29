@@ -155,6 +155,44 @@ class MatchesDB:
 
             return str(result[0])
 
+    def get_user_data(self, user_id: str) -> dict | None:
+        """
+        Fetches data from User table.
+        Returns a dict if the record exists, None otherwise.
+        {
+            "ID_User": 1,
+            "username": username,
+            "fullname": Carlo Conti,
+        }
+        """
+        self.ensure_connection()
+
+        if not user_id or not str(user_id).isdigit():
+            log.error("user_id is not valid: %s", user_id)
+            return None
+
+        query = """
+            SELECT ID_User, username, fullname
+            FROM User
+            WHERE ID_User = %s
+        """
+
+        try:
+            with self.db.cursor(dictionary=True) as cursor:
+                cursor.execute(query, (user_id,))
+                record = cursor.fetchone()
+
+                if record is None:
+                    log.error("User not found ID: %s", user_id)
+                    return None
+
+                log.debug("Fetched user from User %s", user_id)
+                return cast(dict[str, Any], record)
+
+        except mysql.connector.Error as err:
+            log.error("Database error while executing get_user_data: %s", err)
+            return None
+
     def show_table(self, table_name: str) -> bool:
         """select * on a specified table"""
         self.ensure_connection()
@@ -272,9 +310,8 @@ class MatchesDB:
         """
         self.ensure_connection()
 
-        # Validazione base dell'input
         if not match_id or not str(match_id).isdigit():
-            log.error("ID_Match non valido: %s", match_id)
+            log.error("ID_Match is not valid: %s", match_id)
             return None
 
         query = """
