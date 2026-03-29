@@ -9,32 +9,37 @@ from src.logger import LOGGER as log
 # Text and Button >--------------------------
 
 
-async def already_logged_mes_err(message_id: int, user_id: str, context: ContextTypes.DEFAULT_TYPE):
+async def already_logged_mes_err(
+    message_id: int, user_id: str, context: ContextTypes.DEFAULT_TYPE
+):
     """send 'alreday logged' message error"""
     await context.bot.edit_message_text(
-        message_id=message_id,
-        chat_id=user_id,
-        text="You are already logged in"
+        message_id=message_id, chat_id=user_id, text="You are already logged in"
     )
 
 
-async def registration_complete_mes(message_id: int, user_id: str, context: ContextTypes.DEFAULT_TYPE):
+async def registration_complete_mes(
+    message_id: int, user_id: str, context: ContextTypes.DEFAULT_TYPE
+):
     """send 'registration Complete' message"""
     await context.bot.edit_message_text(
-            message_id=message_id,
-            chat_id=user_id,
-            text="Registration completed   <i>Good luck</i>",
-            parse_mode="HTML",
-        )
+        message_id=message_id,
+        chat_id=user_id,
+        text="Registration completed   <i>Good luck</i>",
+        parse_mode="HTML",
+    )
 
 
-async def generic_db_mes_err(message_id: int, user_id: str, context: ContextTypes.DEFAULT_TYPE):
+async def generic_db_mes_err(
+    message_id: int, user_id: str, context: ContextTypes.DEFAULT_TYPE
+):
     """send 'Generic' message error"""
     await context.bot.edit_message_text(
-            message_id=message_id,
-            chat_id=user_id,
-            text="Something went wrong",
-            )
+        message_id=message_id,
+        chat_id=user_id,
+        text="Something went wrong",
+    )
+
 
 # Command >------------------------------------
 
@@ -49,11 +54,11 @@ async def register(update: Update, context: ContextTypes.DEFAULT_TYPE):
     username = update.effective_user.username
 
     if username is None:
-        log.debug(f"No username found for {user_id}, overriding")
+        log.debug("No username found for %s, overriding", user_id)
     message = await context.bot.send_message(chat_id=user_id, text="Loading...")
 
     if isinstance(db.get_username(user_id), str):
-        log.warning(f"{user_id} is already logged")
+        log.warning("%s is already logged", user_id)
         await already_logged_mes_err(message.id, user_id, context)
         return
 

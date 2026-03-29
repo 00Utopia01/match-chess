@@ -12,15 +12,13 @@ from src.logger import LOGGER as log
 
 def create_button() -> InlineKeyboardMarkup:
     """Create button markup for /eula"""
-    accept_button = InlineKeyboardButton(
-        "register", callback_data="usr:del_and_start_register"
-    )
     refuse_button = InlineKeyboardButton(
         "optout", callback_data="usr:del_and_start_optout"
     )
-
+    accept_button = InlineKeyboardButton(
+        "register", callback_data="usr:del_and_start_register"
+    )
     options_layout = [[refuse_button, accept_button]]
-
     return InlineKeyboardMarkup(options_layout)
 
 
@@ -52,7 +50,7 @@ async def eula(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 
-# Callback >-----------------
+# Callback >-------------------------------------
 
 
 async def del_message_and_optout_callback(
