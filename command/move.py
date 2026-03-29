@@ -1,4 +1,5 @@
 """Handle /move command, to enable users to make a move by replying to a chessboard message"""
+
 from enum import Enum
 import io
 import re
@@ -15,6 +16,7 @@ from src.db_manager import DB as db
 from src.logger import LOGGER as log
 
 
+# pylint: disable=too-many-return-statements
 async def move(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handle move command, update chessboard on the db, send messages to the two users"""
     if not update.message or not update.effective_chat or not update.effective_user:
@@ -26,6 +28,11 @@ async def move(update: Update, context: ContextTypes.DEFAULT_TYPE):
             chat_id=update.effective_chat.id,
             text="You must use the /move command as a reply to the board!",
         )
+        return
+
+    if not context.args:
+        # Send message "must input a move"
+        log.error("Cannot execute /move without move_uci")
         return
 
     caption = update.message.reply_to_message.caption
@@ -59,6 +66,9 @@ async def move(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await move_send_messages(move_uci, match_data, update, context)
 
 
+# pylint: enable=too-many-return-statements
+
+
 async def move_send_messages(
     move_uci: str,
     match_data: dict,
@@ -66,7 +76,11 @@ async def move_send_messages(
     context: ContextTypes.DEFAULT_TYPE,
 ):
     """Orchestrates the outcome of a move and sends messages to both players"""
-    if not update.message and update.effective_user and update.message.reply_to_message:
+    if (
+        not update.message
+        or not update.effective_user
+        or not update.message.reply_to_message
+    ):
         return
 
     white_id, black_id = match_data["white_user1"], match_data["black_user2"]
@@ -103,6 +117,13 @@ async def _handle_successful_move(
     context: ContextTypes.DEFAULT_TYPE,
 ):
     """Save the move in the db, deletes old chessboard messages, and sends new ones"""
+    if (
+        not update.message
+        or not update.effective_user
+        or not update.message.reply_to_message
+    ):
+        return
+
     # Update database's chessboard with the new move
     sender_id = update.effective_user.id
     chessboard = chess.Board(fen=match_data["chessboard_fen"])
@@ -113,11 +134,23 @@ async def _handle_successful_move(
     img = get_chessboard_webp(chessboard)
 
     # Get user's fullname from the db
-    sender_user_data = db.get_user_data(sender_id)
-    receiver_user_data = db.get_user_data(receiver_id)
+    sender_user_data = db.get_user_data(str(sender_id))
+    receiver_user_data = db.get_user_data(str(receiver_id))
+
+    if not isinstance(sender_user_data, dict) or not isinstance(
+        receiver_user_data, dict
+    ):
+        log.error(
+            "Invalid sender_user_data or receiver_user_data: %s, %s",
+            str(sender_id),
+            str(receiver_id),
+        )
+        return
 
     # Delete old chessboard messages
-    await _delete_old_messages(match_id, sender_id, receiver_id, update, context)
+    await _delete_old_messages(
+        match_id, str(sender_id), str(receiver_id), update, context
+    )
 
     # Send messages
     sender_msg = await context.bot.send_photo(
@@ -151,6 +184,14 @@ async def _delete_old_messages(
     context: ContextTypes.DEFAULT_TYPE,
 ):
     """Attempts to delete previous board messages"""
+    if (
+        not update.message
+        or not update.effective_chat
+        or not update.effective_user
+        or not update.message.reply_to_message
+    ):
+        return
+
     app_chat_data = context.application.chat_data
 
     # Delete sender's last message (the one they replied to)
@@ -191,8 +232,8 @@ async def _handle_game_over(
         winner = "Black" if chessboard.turn == chess.WHITE else "White"
         text = f"{winner} player has won the match by checkmate!"
 
-    context.bot.send_message(chat_id=white_id, text=text)
-    context.bot.send_message(chat_id=black_id, text=text)
+    await context.bot.send_message(chat_id=white_id, text=text)
+    await context.bot.send_message(chat_id=black_id, text=text)
 
 
 def _update_chat_data(context, match_id, user_id, message_id):

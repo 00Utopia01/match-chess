@@ -1,5 +1,7 @@
 """This module handles callback query"""
 
+from typing import cast
+
 from chess import Board
 from telegram import CallbackQuery, Update
 from telegram.ext import ContextTypes
@@ -45,6 +47,13 @@ def _start_match(mode: int, p1_id: str, p2_id: str) -> str | None:
 async def handle_accept_match(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """handle method for commands.play.challenge_user InlineQueryButton,
     where the user accepts the match request"""
+    if not update.message or not update.effective_user:
+        return
+
+    if not context.match:
+        log.error("Context doesn't have callback_data")
+        return
+
     query = update.callback_query
 
     if query is None:
@@ -102,7 +111,7 @@ async def handle_accept_match(update: Update, context: ContextTypes.DEFAULT_TYPE
         parse_mode="HTML",
     )
     # Save p1 and p2's message id in chat data
-    app_chat_data = context.application.chat_data
+    app_chat_data = cast(dict, context.application.chat_data)
     if int(p1_id) not in app_chat_data:
         app_chat_data[int(p1_id)] = {}
     if int(p2_id) not in app_chat_data:
