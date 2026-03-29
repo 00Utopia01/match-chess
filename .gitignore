@@ -8,3 +8,5 @@ run-lint.ps1
 test/
 log/
 .coverage
+init_db.py
+application_persistance

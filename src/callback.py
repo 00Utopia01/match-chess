@@ -1,9 +1,11 @@
-"""This module handle callback query"""
+"""This module handles callback query"""
 
+from chess import Board
 from telegram import CallbackQuery, Update
 from telegram.ext import ContextTypes
 
-from src.chess_logic import create_board, get_board
+#from src.chess_logic import get_board
+from command.move import get_chessboard_webp
 from src.db_manager import DB as db
 from src.logger import LOGGER as log
 
@@ -27,13 +29,12 @@ async def handle_accept_match(update: Update, context: ContextTypes.DEFAULT_TYPE
     query = update.callback_query
 
     if query is None:
+        log.error("No query")
         return
 
     await query.answer()
 
-    if not context.match or not update.effective_user:
-        return
-
+    # p2 = user that sends the request, p1 = user that accepts
     p1_id = context.match.group(1)
     p1_name = context.match.group(3)
     mode = int(context.match.group(2))
@@ -54,45 +55,52 @@ async def handle_accept_match(update: Update, context: ContextTypes.DEFAULT_TYPE
         log.error("Database did not return True result")
         return
 
-    id_match = db.get_active_match(p1_id, p2_id)
+    match_id = db.get_active_match(p1_id, p2_id)
 
-    if id_match is None:
-        log.error("id_match is None")
+    if match_id is None:
+        log.error("match_id is None")
         return
 
-    board_fen = db.get_match_chessboard(id_match)
+    board_fen = db.get_match_chessboard(match_id)
 
     if board_fen is None:
         log.error("board_fen is None")
         return
 
-    board = create_board(board_fen)
-    img1 = get_board(board=board)
-    img2 = get_board(board=board)
+    board = Board(board_fen)
+    img1 = get_chessboard_webp(chessboard=board)
+    img2 = get_chessboard_webp(chessboard=board)
 
     await query.delete_message()
 
-    await context.bot.send_photo(
+    msg_p1 = await context.bot.send_photo(
         chat_id=p1_id,
         photo=img1,
         caption=(
             f"<b>Game Vs {p2_name}</b>\n"
             "Your challenge request has been accepted\n\n"
-            f"<i>Match number: {id_match}</i>"
+            f"<i>Match number: {match_id}</i>"
         ),
         parse_mode="HTML",
     )
 
-    await context.bot.send_photo(
+    msg_p2 = await context.bot.send_photo(
         chat_id=p2_id,
         photo=img2,
         caption=(
             f"<b>Game Vs {p1_name}</b>\n"
             "You have  accepted the challenge request\n\n"
-            f"<i>Match number: {id_match}</i>"
+            f"<i>Match number: {match_id}</i>"
         ),
         parse_mode="HTML",
     )
+    # Save p1 and p2's message id in chat data
+    app_chat_data = context.application.chat_data
+    if int(p1_id) not in app_chat_data: app_chat_data[int(p1_id)] = {}
+    if int(p2_id) not in app_chat_data: app_chat_data[int(p2_id)] = {}
+    
+    app_chat_data[int(p1_id)][f"msg_{match_id}"] = msg_p1.message_id
+    app_chat_data[int(p2_id)][f"msg_{match_id}"] = msg_p2.message_id
 
 
 async def handle_refuse_match(update: Update, context: ContextTypes.DEFAULT_TYPE):

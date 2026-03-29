@@ -11,6 +11,7 @@ from telegram.ext import (
     CommandHandler,
     MessageHandler,
     filters,
+    PicklePersistence,
 )
 
 from command.debug.caps import caps
@@ -29,6 +30,7 @@ from command.start import (
     start_optout_callback,
     start_register_callback,
 )
+from command.move import move
 from src.callback import (
     handle_accept_match,
     handle_refuse_match,
@@ -40,7 +42,8 @@ if __name__ == "__main__":
 
     log.info("Starting...")
 
-    application = ApplicationBuilder().token(env.get_token()).build()
+    persistence = PicklePersistence(filepath="application_persistance")
+    app = application = ApplicationBuilder().token(env.get_token()).persistence(persistence).build()
 
     # Bot Commands >----------------------------------
     commands_list_handler = CommandHandler("help", help_command)
@@ -49,6 +52,7 @@ if __name__ == "__main__":
     challenge_handler = CommandHandler("challenge_user", challenge_user)
     eula_handler = CommandHandler("eula", eula)
     register_handler = CommandHandler("register", register)
+    match_handler = CommandHandler("move", move)
 
     echo_handler = MessageHandler(filters.TEXT & (~filters.COMMAND), echo)
     caps_handler = CommandHandler("caps", caps)
@@ -78,6 +82,7 @@ if __name__ == "__main__":
     application.add_handler(echo_handler)
     application.add_handler(caps_handler)
     application.add_handler(play_handler)
+    application.add_handler(match_handler)
 
     application.add_handler(challenge_handler)
     application.add_handler(commands_list_handler)
