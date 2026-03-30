@@ -59,7 +59,7 @@ async def test_eula_succes(mocker: MockerFixture):
 # Callback >---------------------------------------------
 
 
-############ { test del_message_and_optout_callback() } ####################
+# --------------- { test del_message_and_optout_callback() } ---------------#
 
 
 @pytest.mark.asyncio
@@ -120,7 +120,7 @@ async def test_del_message_and_optout_callback_correct(mocker: MockerFixture):
     optout_mocker.assert_awaited_once()
 
 
-############# { test del_message_and_register_callback() } ##################
+# --------------- { test del_message_and_register_callback() } ---------------#
 
 
 @pytest.mark.asyncio

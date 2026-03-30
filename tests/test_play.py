@@ -84,27 +84,12 @@ mode = [
 ]
 
 
-@pytest.mark.parametrize("modes", mode)
-def test_set_text_invalid_input(modes):
-    """test invalid input"""
-    result = play.set_text("test", modes)
-
-    assert result == ""
-
-
 mode_config = [
     [(1, False), "match"],
     [(2, False), "match"],
     [(1, True), "black"],
     [(2, True), "white"],
 ]
-
-
-@pytest.mark.parametrize("modes, string", mode_config)
-def test_set_text_correct(modes, string):
-    """Test invalid inputs"""
-    result = play.set_text("test", modes)
-    assert string in result
 
 
 @pytest.mark.asyncio

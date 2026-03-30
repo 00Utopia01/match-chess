@@ -169,9 +169,11 @@ async def test_handle_refuse_match_success():
     query.answer = AsyncMock()
     query.edit_message_text = AsyncMock()
 
-    context.bot = AsyncMock()
-    context.match = AsyncMock()
-    context.match.group = AsyncMock()
+    context.bot = MagicMock()
+    context.bot.send_message = AsyncMock()
+
+    context.match = MagicMock()
+    context.match.group = MagicMock()
 
     await callback.handle_refuse_match(update, context)
 

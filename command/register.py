@@ -63,7 +63,7 @@ async def register(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await already_logged_mes_err(message.id, user_id, context)
         return
 
-    if db.insert_user(user_id, username,fullname):
+    if db.insert_user(user_id, username, fullname):
         await registration_completed_mes(message.id, user_id, context)
     else:
         log.error("Something went wrong during db.insert_user() in register()")

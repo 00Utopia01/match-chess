@@ -59,7 +59,7 @@ async def test_start_correct():
 # CallBack >------------------------------------------------------------
 
 
-############# { test start_optout_callback() } #####################
+# --------------- { test start_optout_callback() } ---------------#
 
 
 @pytest.mark.asyncio
@@ -116,7 +116,7 @@ async def test_start_optout_callback_correct(mocker: MockerFixture):
     optout_mocker.assert_called_once()
 
 
-############# { test start_eula_callback() } #####################
+# --------------- { test start_eula_callback() } ---------------#
 
 
 @pytest.mark.asyncio
@@ -173,7 +173,7 @@ async def test_start_eula_callback_correct(mocker: MockerFixture):
     eula_mocker.assert_called_once()
 
 
-############# { test start_register_callback() } #####################
+# --------------- { test start_register_callback() } ---------------#
 
 
 @pytest.mark.asyncio
