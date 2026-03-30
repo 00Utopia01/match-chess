@@ -201,7 +201,7 @@ async def _delete_old_messages(
         )
     except BadRequest:
         log.error("Failed to delete sender's last message (the one they replied to)")
-        pass
+        return
 
     # Delete receiver's last message from persistence.chat_data
     receiver_msg_id = app_chat_data.get(int(receiver_id), {}).get(f"msg_{match_id}")
@@ -211,8 +211,10 @@ async def _delete_old_messages(
                 chat_id=receiver_id, message_id=receiver_msg_id
             )
         except BadRequest:
-            log.error("Failed to delete receiver's last message from persistence.chat_data")
-            pass
+            log.error(
+                "Failed to delete receiver's last message from persistence.chat_data"
+            )
+            return
 
 
 async def _handle_game_over(
@@ -228,14 +230,39 @@ async def _handle_game_over(
 
     db.stop_match(match_id)
 
+    img = get_chessboard_webp(chessboard)
+
+    white_user_data = db.get_user_data(str(white_id))
+    black_user_data = db.get_user_data(str(black_id))
+
+    if not white_user_data or not black_user_data:
+        log.error("Failed to fetch user_data")
+        return
+
     if outcome == MoveOutcome.STALEMATE:
         text = MoveOutcome.STALEMATE.value
     else:
         winner = "Black" if chessboard.turn == chess.WHITE else "White"
         text = f"{winner} player has won the match by checkmate!"
 
-    await context.bot.send_message(chat_id=white_id, text=text)
-    await context.bot.send_message(chat_id=black_id, text=text)
+    # Send messages
+    await context.bot.send_photo(
+        chat_id=white_id,
+        photo=img,
+        caption=f"<b>Game Vs {black_user_data["fullname"]}</b>\n"
+        f"{text}\n\n"
+        f"<i>Match number: {match_id}</i>",
+        parse_mode="HTML",
+    )
+    img.seek(0)
+    await context.bot.send_photo(
+        chat_id=black_id,
+        photo=img,
+        caption=f"<b>Game Vs {white_user_data["fullname"]}</b>\n"
+        f"{text}\n\n"
+        f"<i>Match number: {match_id}</i>",
+        parse_mode="HTML",
+    )
 
 
 def _update_chat_data(context, match_id, user_id, message_id):
