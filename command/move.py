@@ -88,7 +88,7 @@ async def move_send_messages(
 
     move_outcome = get_move_outcome(chessboard, move_uci)
     sender_id = update.effective_user.id
-    receiver_id = black_id if is_white_turn(chessboard.fen()) else white_id
+    receiver_id = black_id if sender_id == white_id else white_id
 
     match move_outcome:
         case MoveOutcome.STALEMATE | MoveOutcome.CHECKMATE:
@@ -200,6 +200,7 @@ async def _delete_old_messages(
             chat_id=sender_id, message_id=update.message.reply_to_message.message_id
         )
     except BadRequest:
+        log.error("Failed to delete sender's last message (the one they replied to)")
         pass
 
     # Delete receiver's last message from persistence.chat_data
@@ -210,6 +211,7 @@ async def _delete_old_messages(
                 chat_id=receiver_id, message_id=receiver_msg_id
             )
         except BadRequest:
+            log.error("Failed to delete receiver's last message from persistence.chat_data")
             pass
 
 
@@ -333,24 +335,24 @@ def get_move_outcome(chessboard: chess.Board, move_uci: str):
     and return it's outcome:
     (SUCCESS, INVALID_FORMAT, ILLEGAL_CHECK, ILLEGAL_GENERIC, CHECKMATE, STALEMATE)
     """
+    chessboard_cpy: chess.Board = chessboard
+
     try:
         parsed_move = chess.Move.from_uci(move_uci)
 
     except chess.InvalidMoveError:
         return MoveOutcome.INVALID_FORMAT  # invalid UCI format or non existent move_uci
 
-    if parsed_move not in chessboard.legal_moves:
-        if chessboard.is_pseudo_legal(parsed_move):
+    if parsed_move not in chessboard_cpy.legal_moves:
+        if chessboard_cpy.is_pseudo_legal(parsed_move):
             return MoveOutcome.ILLEGAL_CHECK  # Invalid move (player under check)
         return MoveOutcome.ILLEGAL_GENERIC  # Generic Invalid move
 
-    outcome = chessboard.outcome()
+    chessboard_cpy.push(parsed_move)
 
-    if outcome:
-        if outcome.termination == chess.Termination.CHECKMATE:
-            return MoveOutcome.CHECKMATE
-
-        if outcome.termination == chess.Termination.STALEMATE:
-            return MoveOutcome.STALEMATE
+    if chessboard_cpy.is_checkmate():
+        return MoveOutcome.CHECKMATE
+    if chessboard_cpy.is_stalemate():
+        return MoveOutcome.STALEMATE
 
     return MoveOutcome.SUCCESS
