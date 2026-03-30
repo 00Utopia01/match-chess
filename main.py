@@ -4,79 +4,106 @@ This module handles the main Telegram bot logic for Match-Chess.
 
 import sys
 
-from telegram import Update
 from telegram.error import InvalidToken, NetworkError
 from telegram.ext import (
     ApplicationBuilder,
+    CallbackQueryHandler,
     CommandHandler,
-    ContextTypes,
     MessageHandler,
+    PicklePersistence,
     filters,
 )
 
-from src import env
+from command.debug.caps import caps
+from command.debug.echo import echo
+from command.eula import (
+    del_message_and_optout_callback,
+    del_message_and_register_callback,
+    eula,
+)
+from command.help import command_list as help_command
+from command.move import move
+from command.play import challenge_user, play
+from command.register import register
+from command.start import (
+    start,
+    start_eula_callback,
+    start_optout_callback,
+    start_register_callback,
+)
+from src.callback import (
+    handle_accept_match,
+    handle_refuse_match,
+)
+from src.env import ENV as env
 from src.logger import LOGGER as log
-
-log.info("------------------- Fresh Start -------------------")
-
-# Bot Commands >------------------------------------
-
-
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """function to be activated whenever the "/start" command is sent"""
-    if not update.effective_chat:
-        return
-    await context.bot.send_message(
-        chat_id=update.effective_chat.id, text="I'm a bot, please talk to me!"
-    )
-
-
-async def echo(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """this re-prints the message sent to the bot"""
-    if not update.effective_chat or not update.message or not update.message.text:
-        return
-    await context.bot.send_message(
-        chat_id=update.effective_chat.id, text=update.message.text
-    )
-
-
-async def caps(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """command to turn into upcase a given text"""
-    if not update.effective_chat:
-        return
-
-    text_caps = " ".join(context.args or []).upper()
-    await context.bot.send_message(chat_id=update.effective_chat.id, text=text_caps)
-
-
-# Bot Configuration >-------------------------------------
 
 if __name__ == "__main__":
 
-    # Token setup >--------------------------------
-
-    log.info("Loading Token...")
-
-    TOKEN = env.get_token()
-    if TOKEN is None or not env.check_token(TOKEN):
-        sys.exit(1)
-    else:
-        log.info("Setting telegram bot token...")
-
-    # Bot Application setup >--------------------------------
-
     log.info("Starting...")
 
-    application = ApplicationBuilder().token(TOKEN).build()
+    persistence = PicklePersistence(filepath="application_persistance")
+    app = application = (
+        ApplicationBuilder().token(env.get_token()).persistence(persistence).build()
+    )
 
+    # Bot Commands >----------------------------------
+    commands_list_handler = CommandHandler("help", help_command)
     start_handler = CommandHandler("start", start)
+    play_handler = CommandHandler("play", play)
+    challenge_handler = CommandHandler("challenge_user", challenge_user)
+    eula_handler = CommandHandler("eula", eula)
+    register_handler = CommandHandler("register", register)
+    match_handler = CommandHandler("move", move)
+
     echo_handler = MessageHandler(filters.TEXT & (~filters.COMMAND), echo)
     caps_handler = CommandHandler("caps", caps)
 
-    application.add_handler(start_handler)
+    accept_match_handler = CallbackQueryHandler(
+        handle_accept_match, pattern=r"^usr:accept_match_(\w+)_([12])_(\w+(\s*.*)*)$"
+    )
+    refuse_match_handler = CallbackQueryHandler(
+        handle_refuse_match, pattern=r"^usr:refuse_match_(\w+)_([12])_(\w+(\s*.*)*)$"
+    )
+    start_optout_query_handler = CallbackQueryHandler(
+        start_optout_callback, pattern=r"^usr:start_optout$"
+    )
+    start_eula_query_handler = CallbackQueryHandler(
+        start_eula_callback, pattern=r"^usr:start_eula$"
+    )
+    start_register_query_handler = CallbackQueryHandler(
+        start_register_callback, pattern=r"^usr:start_register$"
+    )
+    del_and_start_optout_query_handler = CallbackQueryHandler(
+        del_message_and_optout_callback, pattern=r"^usr:del_and_start_optout$"
+    )
+    del_and_start_register_query_handler = CallbackQueryHandler(
+        del_message_and_register_callback, pattern=r"^usr:del_and_start_register$"
+    )
+
     application.add_handler(echo_handler)
     application.add_handler(caps_handler)
+    application.add_handler(play_handler)
+    application.add_handler(match_handler)
 
+    application.add_handler(challenge_handler)
+    application.add_handler(commands_list_handler)
+
+    application.add_handler(start_handler)
+    application.add_handler(eula_handler)
+    application.add_handler(register_handler)
+
+    application.add_handler(accept_match_handler)
+    application.add_handler(refuse_match_handler)
+
+    application.add_handler(start_optout_query_handler)
+    application.add_handler(start_eula_query_handler)
+    application.add_handler(start_register_query_handler)
+
+    application.add_handler(del_and_start_optout_query_handler)
+    application.add_handler(del_and_start_register_query_handler)
+
+    # Running >--------------------------------
     try:
         application.run_polling()
     except InvalidToken:
