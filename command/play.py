@@ -51,6 +51,7 @@ def create_button(
 
     if mode not in ("white", "black"):
         log.error("Invalid mode cannot be setted into callback: %s", mode)
+        return None
 
     # 1 = p1_id starts as white, 2 = 1 = p1_id starts as black
     mode_setting = 1 if mode == "white" else 2

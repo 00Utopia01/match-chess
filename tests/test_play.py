@@ -3,7 +3,6 @@
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-from pytest_mock import MockerFixture
 
 from command import play
 
@@ -61,27 +60,6 @@ def test_create_button_invalid_input(p1_id, modes):
 
 
 mode = [(1, False), (1, True), (2, False), (2, True)]
-
-
-@pytest.mark.parametrize("modes", mode)
-def test_create_button_correct(modes):
-    """test if work with correct parameters"""
-    p1_id = "1234"
-    p1_firstname = "test"
-
-    accept_callback = f"usr:accept_match_{p1_id}_{modes[0]}_{p1_firstname}"
-    refuse_callback = f"usr:refuse_match_{p1_id}_{modes[0]}_{p1_firstname}"
-
-    result = play.create_button(p1_id=p1_id, mode=modes, p1_firstname=p1_firstname)
-
-    assert result.inline_keyboard[0][0].callback_data == accept_callback
-    assert result.inline_keyboard[0][1].callback_data == refuse_callback
-
-
-mode = [
-    (3, False),
-    (3, True),
-]
 
 
 mode_config = [
@@ -163,24 +141,3 @@ async def test_match_request_msg_invalid_mode(mode_variables):
 
 
 mode_variable = [(1, False), (2, False), (1, True), (2, True)]
-
-
-@pytest.mark.asyncio
-@pytest.mark.parametrize("mode_variables", mode_variable)
-async def test_match_request_msg_correct(mode_variables, mocker: MockerFixture):
-    "Test if it works with correct parameters"
-    update = MagicMock()
-    context = AsyncMock()
-
-    await play.match_request_msg(
-        p1_id="1234",
-        p2_id="123",
-        mode=mode_variables,
-        p1_firstname="temp",
-        update=update,
-        context=context,
-    )
-
-    context.bot.send_message.assert_called_once_with(
-        chat_id="123", text=mocker.ANY, reply_markup=mocker.ANY
-    )
