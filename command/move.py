@@ -1,8 +1,8 @@
 """Handle /move command, to enable users to make a move by replying to a chessboard message"""
 
-from enum import Enum
 import io
 import re
+from enum import Enum
 
 import cairosvg  # type: ignore
 import chess
