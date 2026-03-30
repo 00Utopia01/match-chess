@@ -1,3 +1,5 @@
+"""Test methods regarding /move command"""
+
 import chess
 import pytest
 
@@ -45,6 +47,8 @@ test_moves = [
 
 @pytest.mark.parametrize("test_move", test_moves)
 def test_get_move_outcome(test_move):
+    """Test different moves in differend scenarios (chessboard dispositions),
+    and assert the return value of get_move_outcome()"""
     chessboard = chess.Board(fen=test_move["chessboard_fen"])
     assert (
         move.get_move_outcome(chessboard, test_move["move"])
