@@ -47,7 +47,7 @@ def _start_match(mode: int, p1_id: str, p2_id: str) -> str | None:
 async def handle_accept_match(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """handle method for commands.play.challenge_user InlineQueryButton,
     where the user accepts the match request"""
-    if not update.message or not update.effective_user:
+    if not update.effective_user:
         return
 
     if not context.match:
