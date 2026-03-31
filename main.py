@@ -19,8 +19,8 @@ from command.eula import (
     eula,
 )
 from command.help import command_list as help_command
-from command.matchmaking import MatchMakingQueue, cancel_matchmaking, matchmaking
 from command.info import info
+from command.matchmaking import MatchMakingQueue, cancel_matchmaking, matchmaking
 from command.move import move
 from command.play import challenge_user, play
 from command.register import register
