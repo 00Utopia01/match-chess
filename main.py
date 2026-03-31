@@ -3,6 +3,7 @@ This module handles the main Telegram bot logic for Match-Chess.
 """
 
 import sys
+from functools import partial
 
 from telegram.error import InvalidToken, NetworkError
 from telegram.ext import (
@@ -22,6 +23,7 @@ from command.eula import (
     eula,
 )
 from command.help import command_list as help_command
+from command.matchmaking import MatchMakingQueue, cancel_matchmaking, matchmaking
 from command.move import move
 from command.play import challenge_user, play
 from command.register import register
@@ -47,10 +49,16 @@ if __name__ == "__main__":
         ApplicationBuilder().token(env.get_token()).persistence(persistence).build()
     )
 
+    # Create a matchmaking object that handles the matchmaking queue
+    matchmaking_queue = MatchMakingQueue(persistence=persistence)
+
     # Bot Commands >----------------------------------
     commands_list_handler = CommandHandler("help", help_command)
     start_handler = CommandHandler("start", start)
     play_handler = CommandHandler("play", play)
+    matchmaking_handler = CommandHandler(
+        "matchmaking", partial(matchmaking, matchmaking_queue=matchmaking_queue)
+    )
     challenge_handler = CommandHandler("challenge_user", challenge_user)
     eula_handler = CommandHandler("eula", eula)
     register_handler = CommandHandler("register", register)
@@ -80,12 +88,17 @@ if __name__ == "__main__":
     del_and_start_register_query_handler = CallbackQueryHandler(
         del_message_and_register_callback, pattern=r"^usr:del_and_start_register$"
     )
+    cancel_matchmaking_handler = CallbackQueryHandler(
+        partial(cancel_matchmaking, matchmaking_queue=matchmaking_queue),
+        pattern=r"^usr:cancel_matchmaking$",
+    )
 
     application.add_handler(echo_handler)
     application.add_handler(caps_handler)
     application.add_handler(play_handler)
     application.add_handler(match_handler)
 
+    application.add_handler(matchmaking_handler)
     application.add_handler(challenge_handler)
     application.add_handler(commands_list_handler)
 
@@ -102,6 +115,7 @@ if __name__ == "__main__":
 
     application.add_handler(del_and_start_optout_query_handler)
     application.add_handler(del_and_start_register_query_handler)
+    application.add_handler(cancel_matchmaking_handler)
 
     # Running >--------------------------------
     try:
