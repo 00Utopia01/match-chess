@@ -1,16 +1,17 @@
+"""Add /matchmaking command, which allows any user to look for other users to play with"""
+
 from random import randint
 from typing import cast
 
 import chess
 import telegram
-from telegram.ext import PicklePersistence
-from telegram import Update, Message, InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.ext import ContextTypes
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Message, Update
+from telegram.ext import ContextTypes, PicklePersistence
 
 from command.move import get_chessboard_webp
+from src.db_manager import DB as db
 from src.env import ENV as env
 from src.logger import LOGGER as log
-from src.db_manager import DB as db
 
 
 async def matchmaking(
@@ -18,6 +19,7 @@ async def matchmaking(
     context: ContextTypes.DEFAULT_TYPE,
     matchmaking_queue: MatchMakingQueue,
 ):
+    """Implement /matchmaking command: add user to queue and send messages"""
     if not update.effective_user:
         return
 
@@ -34,6 +36,8 @@ async def matchmaking(
 
 
 async def _waiting_player_msg(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Send the message to inform the user that he is looking for a match.
+    This message contains a button to cancel the matchmaking process"""
     if not update.effective_user:
         return
 
@@ -61,6 +65,7 @@ async def cancel_matchmaking(
     context: ContextTypes.DEFAULT_TYPE,
     matchmaking_queue: MatchMakingQueue,
 ):
+    """Callback function to cancel matchmaking process when the user pesses 'cancel matchmaking'"""
     if update.effective_user is None:
         log.error("No effective_user in cancel_matchmaking()")
         return
@@ -87,6 +92,8 @@ async def cancel_matchmaking(
 
 
 class MatchMakingQueue:
+    """This class represents the matchmaking queue"""
+
     def __init__(self, persistence: PicklePersistence):
         self.user_queue: list[str] = []
         self.persistence: PicklePersistence = persistence
@@ -181,6 +188,9 @@ class MatchMakingQueue:
 
         return msg_white, msg_black
 
+    # pylint: disable=too-many-arguments
+    # pylint: disable=too-many-positional-arguments
+
     async def _save_chat_data(
         self,
         msg_white: Message,
@@ -204,7 +214,7 @@ class MatchMakingQueue:
     def remove_user(self, user_id: str) -> bool:
         """Removes a player from the queue. Returns True if removed."""
         if user_id not in self.user_queue:
-            log.error("Cannot remove user: %s. User is not in queue")
+            log.error("Cannot remove user: %s. User is not in queue", user_id)
             return False
         try:
             self.user_queue.remove(user_id)
