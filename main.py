@@ -10,13 +10,9 @@ from telegram.ext import (
     ApplicationBuilder,
     CallbackQueryHandler,
     CommandHandler,
-    MessageHandler,
     PicklePersistence,
-    filters,
 )
 
-from command.debug.caps import caps
-from command.debug.echo import echo
 from command.eula import (
     del_message_and_optout_callback,
     del_message_and_register_callback,
@@ -24,6 +20,7 @@ from command.eula import (
 )
 from command.help import command_list as help_command
 from command.matchmaking import MatchMakingQueue, cancel_matchmaking, matchmaking
+from command.info import info
 from command.move import move
 from command.play import challenge_user, play
 from command.register import register
@@ -65,9 +62,8 @@ if __name__ == "__main__":
     register_handler = CommandHandler("register", register)
     match_handler = CommandHandler("move", move)
     surrender_handler = CommandHandler("surrender", surrender)
+    info_handler = CommandHandler("info", info)
 
-    echo_handler = MessageHandler(filters.TEXT & (~filters.COMMAND), echo)
-    caps_handler = CommandHandler("caps", caps)
 
     accept_match_handler = CallbackQueryHandler(
         handle_accept_match, pattern=r"^usr:accept_match_(\w+)_([12])_(\w+(\s*.*)*)$"
@@ -95,11 +91,10 @@ if __name__ == "__main__":
         pattern=r"^usr:cancel_matchmaking$",
     )
 
-    application.add_handler(echo_handler)
-    application.add_handler(caps_handler)
     application.add_handler(play_handler)
     application.add_handler(match_handler)
     application.add_handler(surrender_handler)
+    application.add_handler(info_handler)
 
     application.add_handler(matchmaking_handler)
     application.add_handler(challenge_handler)
