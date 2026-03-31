@@ -17,6 +17,7 @@ async def command_list(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "<i>/commands</i>  (to see the commands list)\n"
             "<i>/eula</i>  (To read and accept/refuse the eula agreement)\n"
             "<i>/play [USER ID]</i>  (To start an online Chess match)"
+            "<i>/info</i> (To read your account's current data)"
         ),
         parse_mode="HTML",
     )
