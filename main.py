@@ -33,6 +33,7 @@ from command.start import (
     start_optout_callback,
     start_register_callback,
 )
+from command.surrender import surrender
 from src.callback import (
     handle_accept_match,
     handle_refuse_match,
@@ -63,6 +64,7 @@ if __name__ == "__main__":
     eula_handler = CommandHandler("eula", eula)
     register_handler = CommandHandler("register", register)
     match_handler = CommandHandler("move", move)
+    surrender_handler = CommandHandler("surrender", surrender)
 
     echo_handler = MessageHandler(filters.TEXT & (~filters.COMMAND), echo)
     caps_handler = CommandHandler("caps", caps)
@@ -97,6 +99,7 @@ if __name__ == "__main__":
     application.add_handler(caps_handler)
     application.add_handler(play_handler)
     application.add_handler(match_handler)
+    application.add_handler(surrender_handler)
 
     application.add_handler(matchmaking_handler)
     application.add_handler(challenge_handler)

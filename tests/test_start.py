@@ -1,5 +1,7 @@
 """Tests for start.py"""
 
+# pylint: disable=duplicate-code
+
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -134,10 +136,7 @@ async def test_start_eula_callback_no_user(mocker: MockerFixture):
     eula_mocker.assert_not_called()
 
 
-query_input = [
-    [None, None],
-    [MagicMock(), None],
-]
+# get query_imput from line 80
 
 
 @pytest.mark.asyncio
@@ -191,10 +190,7 @@ async def test_start_register_callback_no_user(mocker: MockerFixture):
     register_mocker.assert_not_called()
 
 
-query_input = [
-    [None, None],
-    [MagicMock(), None],
-]
+# get query_input from line 80
 
 
 @pytest.mark.asyncio

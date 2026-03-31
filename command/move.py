@@ -1,5 +1,7 @@
 """Handle /move command, to enable users to make a move by replying to a chessboard message"""
 
+# pylint: disable=duplicate-code
+
 import io
 import re
 from enum import Enum

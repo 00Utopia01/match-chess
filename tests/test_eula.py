@@ -138,10 +138,7 @@ async def test_del_message_and_register_callback_no_user(mocker: MockerFixture):
     register_mocker.assert_not_awaited()
 
 
-query_input = [
-    [None, None],
-    [MagicMock(), None],
-]
+# get query_input from line 80
 
 
 @pytest.mark.asyncio
