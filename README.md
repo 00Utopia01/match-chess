@@ -2,6 +2,8 @@
 
 Match-Chess is a Telegram bot built with `python-telegram-bot` that allows users to play chess directly within the chat interface. It features a matchmaking system, direct user challenges, and persistent state management to ensure games survive bot restarts.
 
+An istance of this bot is available as: [@mchessqd_bot](https://t.me/mchessqd_bot)
+
 ## Features
 
 - **Matchmaking Queue:** Find opponents automatically using a global queue system.
@@ -88,6 +90,8 @@ python main.py
 | /play                | Initialize a game session.                              |
 | /move <uci_notation> | Make a move in an active game (e.g., `/move e2e4`).     |
 | /eula                | View the End User License Agreement.                    |
+| /info                | Display user session information.                       |
+| /surrender           | Abandon a match.                                        |
 
 ---
 ## Contributing
