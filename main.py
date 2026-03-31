@@ -64,7 +64,6 @@ if __name__ == "__main__":
     surrender_handler = CommandHandler("surrender", surrender)
     info_handler = CommandHandler("info", info)
 
-
     accept_match_handler = CallbackQueryHandler(
         handle_accept_match, pattern=r"^usr:accept_match_(\w+)_([12])_(\w+(\s*.*)*)$"
     )
