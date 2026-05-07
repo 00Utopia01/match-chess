@@ -6,6 +6,7 @@ from typing import cast
 import chess
 import telegram
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Message, Update
+from telegram.error import BadRequest
 from telegram.ext import ContextTypes, PicklePersistence
 
 from command.move import get_chessboard_webp
@@ -17,7 +18,7 @@ from src.logger import LOGGER as log
 async def matchmaking(
     update: Update,
     context: ContextTypes.DEFAULT_TYPE,
-    matchmaking_queue: MatchMakingQueue,
+    matchmaking_queue: "MatchMakingQueue",
 ):
     """Implement /matchmaking command: add user to queue and send messages"""
     if not update.effective_user:
@@ -25,14 +26,17 @@ async def matchmaking(
 
     user_id = str(update.effective_user.id)
 
-    outcome: bool = await matchmaking_queue.add_user(user_id)
+    outcome, matched = await matchmaking_queue.add_user(user_id)
     if not outcome:
         await context.bot.send_message(
             chat_id=update.effective_user.id, text="You are already in queue."
         )
         return
 
-    await _waiting_player_msg(update, context)
+    if not matched:
+        msg_id = await _waiting_player_msg(update, context)
+        if msg_id is not None:
+            await matchmaking_queue.save_waiting_message(user_id, msg_id)
 
 
 async def _waiting_player_msg(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -63,7 +67,7 @@ async def _waiting_player_msg(update: Update, context: ContextTypes.DEFAULT_TYPE
 async def cancel_matchmaking(
     update: Update,
     context: ContextTypes.DEFAULT_TYPE,
-    matchmaking_queue: MatchMakingQueue,
+    matchmaking_queue: "MatchMakingQueue",
 ):
     """Callback function to cancel matchmaking process when the user pesses 'cancel matchmaking'"""
     if update.effective_user is None:
@@ -90,6 +94,8 @@ async def cancel_matchmaking(
         chat_id=user_id, message_id=int(query.message.message_id)
     )
 
+    await matchmaking_queue.clear_waiting_message_key(user_id)
+
 
 class MatchMakingQueue:
     """This class represents the matchmaking queue"""
@@ -99,25 +105,26 @@ class MatchMakingQueue:
         self.persistence: PicklePersistence = persistence
         self.bot = telegram.Bot(token=env.get_token())
 
-    async def add_user(self, user_id: str) -> bool:
+    async def add_user(self, user_id: str) -> tuple[bool, bool]:
         """
         Adds a player to the queue.
-        Returns False if the user is already in the queue,
-        True otherwise
+        Returns a tuple (success, matched).
+        success is False if the user is already in queue.
+        matched is True if the user was immediately matched with another player.
         """
         # Check if user is already in queue
         if user_id in self.user_queue:
             log.error("This user is already in queue: %s", user_id)
-            return False
+            return False, False
 
         # Make a match if possible
         if self.user_queue:
             await self.match_users(user_id, str(self.user_queue.pop(0)))
-            return True
+            return True, True
 
         # Append the user to the queue
         self.user_queue.append(user_id)
-        return True
+        return True, False
 
     async def match_users(self, p1_id: str, p2_id: str):
         """Creates a match between two users waiting in queue"""
@@ -137,6 +144,8 @@ class MatchMakingQueue:
         if not match_id:
             log.error("match_id cannot be None")
             return
+
+        await self._delete_waiting_messages(p1_id, p2_id)
 
         msg_white, msg_black = await self._send_chessboard_msgs(
             white_id, black_id, match_id
@@ -168,7 +177,7 @@ class MatchMakingQueue:
             chat_id=white_id,
             photo=img,
             caption=(
-                f"<b>Game Vs {black_user_data["fullname"]}</b>\n"
+                f"<b>Game Vs {black_user_data['fullname']}</b>\n"
                 "You found an opponent!\n\n"
                 f"<i>Match number: {match_id}</i>"
             ),
@@ -179,7 +188,7 @@ class MatchMakingQueue:
             chat_id=black_id,
             photo=img,
             caption=(
-                f"<b>Game Vs {white_user_data["fullname"]}</b>\n"
+                f"<b>Game Vs {white_user_data['fullname']}</b>\n"
                 "You found an opponent!\n\n"
                 f"<i>Match number: {match_id}</i>"
             ),
@@ -210,6 +219,48 @@ class MatchMakingQueue:
         app_chat_data[int(black_id)][f"msg_{match_id}"] = msg_black.message_id
 
         await self.persistence.flush()
+
+    async def save_waiting_message(self, user_id: str, message_id: int):
+        """Persist the matchmaking waiting message id for a user."""
+        app_chat_data = cast(dict, self.persistence.chat_data)
+        if int(user_id) not in app_chat_data:
+            app_chat_data[int(user_id)] = {}
+
+        app_chat_data[int(user_id)]["waiting_matchmaking_msg"] = message_id
+        await self.persistence.flush()
+
+    async def _delete_waiting_message(self, user_id: str):
+        """Delete a stored matchmaking waiting message for a user."""
+        app_chat_data = cast(dict, self.persistence.chat_data)
+        user_data = app_chat_data.get(int(user_id), {})
+        waiting_message_id = user_data.pop("waiting_matchmaking_msg", None)
+        if waiting_message_id is None:
+            return
+
+        try:
+            await self.bot.delete_message(
+                chat_id=user_id, message_id=waiting_message_id
+            )
+        except BadRequest:
+            log.error(
+                "Failed to delete waiting matchmaking message for user %s",
+                user_id,
+            )
+
+        await self.persistence.flush()
+
+    async def clear_waiting_message_key(self, user_id: str):
+        """Clear a stored waiting matchmaking message id without deleting the message."""
+        app_chat_data = cast(dict, self.persistence.chat_data)
+        user_data = app_chat_data.get(int(user_id), {})
+        if "waiting_matchmaking_msg" in user_data:
+            user_data.pop("waiting_matchmaking_msg")
+            await self.persistence.flush()
+
+    async def _delete_waiting_messages(self, p1_id: str, p2_id: str):
+        """Delete matchmaking waiting messages for both users."""
+        await self._delete_waiting_message(p1_id)
+        await self._delete_waiting_message(p2_id)
 
     def remove_user(self, user_id: str) -> bool:
         """Removes a player from the queue. Returns True if removed."""

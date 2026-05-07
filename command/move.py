@@ -94,7 +94,7 @@ async def move_send_messages(
 
     match move_outcome:
         case MoveOutcome.STALEMATE | MoveOutcome.CHECKMATE:
-            await _handle_game_over(move_outcome, match_data, chessboard, context)
+            await _handle_game_over(match_data, chessboard, move_uci, update, context)
 
         case MoveOutcome.SUCCESS:
             await _handle_successful_move(
@@ -220,9 +220,10 @@ async def _delete_old_messages(
 
 
 async def _handle_game_over(
-    outcome: MoveOutcome,
     match_data: dict,
     chessboard: chess.Board,
+    move_uci: str,
+    update: Update,
     context: ContextTypes.DEFAULT_TYPE,
 ):
     """Ends the database match and notifies players"""
@@ -230,7 +231,20 @@ async def _handle_game_over(
     match_id = match_data["ID_Match"]
     white_id, black_id = match_data["white_user1"], match_data["black_user2"]
 
+    if update.effective_user is None:
+        log.error("No effective_user available in _handle_game_over")
+        return
+
+    sender_id = str(update.effective_user.id)
+    receiver_id = str(black_id) if sender_id == str(white_id) else str(white_id)
+
+    # Push final move to the board and save to database
+    chessboard.push(chess.Move.from_uci(move_uci))
+    db.add_move(match_id, move_uci)
     db.stop_match(match_id)
+
+    # Delete previous board messages
+    await _delete_old_messages(match_id, sender_id, receiver_id, update, context)
 
     img = get_chessboard_webp(chessboard)
 
@@ -241,7 +255,7 @@ async def _handle_game_over(
         log.error("Failed to fetch user_data")
         return
 
-    if outcome == MoveOutcome.STALEMATE:
+    if chessboard.is_stalemate():
         text = MoveOutcome.STALEMATE.value
     else:
         winner = "Black" if chessboard.turn == chess.WHITE else "White"
@@ -251,7 +265,8 @@ async def _handle_game_over(
     await context.bot.send_photo(
         chat_id=white_id,
         photo=img,
-        caption=f"<b>Game Vs {black_user_data["fullname"]}</b>\n"
+        caption=f"<b>Game Vs {black_user_data['fullname']}</b>\n"
+        f"Final move: {move_uci}\n\n"
         f"{text}\n\n"
         f"<i>Match number: {match_id}</i>",
         parse_mode="HTML",
@@ -260,7 +275,8 @@ async def _handle_game_over(
     await context.bot.send_photo(
         chat_id=black_id,
         photo=img,
-        caption=f"<b>Game Vs {white_user_data["fullname"]}</b>\n"
+        caption=f"<b>Game Vs {white_user_data['fullname']}</b>\n"
+        f"Final move: {move_uci}\n\n"
         f"{text}\n\n"
         f"<i>Match number: {match_id}</i>",
         parse_mode="HTML",
@@ -364,7 +380,7 @@ def get_move_outcome(chessboard: chess.Board, move_uci: str):
     and return it's outcome:
     (SUCCESS, INVALID_FORMAT, ILLEGAL_CHECK, ILLEGAL_GENERIC, CHECKMATE, STALEMATE)
     """
-    chessboard_cpy: chess.Board = chessboard
+    chessboard_cpy: chess.Board = chessboard.copy()
 
     try:
         parsed_move = chess.Move.from_uci(move_uci)
