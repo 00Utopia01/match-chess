@@ -94,7 +94,7 @@ async def move_send_messages(
 
     match move_outcome:
         case MoveOutcome.STALEMATE | MoveOutcome.CHECKMATE:
-            await _handle_game_over(move_outcome, match_data, chessboard, move_uci, update, context)
+            await _handle_game_over(match_data, chessboard, move_uci, update, context)
 
         case MoveOutcome.SUCCESS:
             await _handle_successful_move(
@@ -220,7 +220,6 @@ async def _delete_old_messages(
 
 
 async def _handle_game_over(
-    outcome: MoveOutcome,
     match_data: dict,
     chessboard: chess.Board,
     move_uci: str,
@@ -231,7 +230,11 @@ async def _handle_game_over(
 
     match_id = match_data["ID_Match"]
     white_id, black_id = match_data["white_user1"], match_data["black_user2"]
-    
+
+    if update.effective_user is None:
+        log.error("No effective_user available in _handle_game_over")
+        return
+
     sender_id = str(update.effective_user.id)
     receiver_id = str(black_id) if sender_id == str(white_id) else str(white_id)
 
@@ -252,7 +255,7 @@ async def _handle_game_over(
         log.error("Failed to fetch user_data")
         return
 
-    if outcome == MoveOutcome.STALEMATE:
+    if chessboard.is_stalemate():
         text = MoveOutcome.STALEMATE.value
     else:
         winner = "Black" if chessboard.turn == chess.WHITE else "White"

@@ -5,8 +5,8 @@ from typing import cast
 
 import chess
 import telegram
-from telegram.error import BadRequest
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Message, Update
+from telegram.error import BadRequest
 from telegram.ext import ContextTypes, PicklePersistence
 
 from command.move import get_chessboard_webp
@@ -36,7 +36,7 @@ async def matchmaking(
     if not matched:
         msg_id = await _waiting_player_msg(update, context)
         if msg_id is not None:
-            await matchmaking_queue._save_waiting_message(user_id, msg_id)
+            await matchmaking_queue.save_waiting_message(user_id, msg_id)
 
 
 async def _waiting_player_msg(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -94,7 +94,7 @@ async def cancel_matchmaking(
         chat_id=user_id, message_id=int(query.message.message_id)
     )
 
-    await matchmaking_queue._clear_waiting_message_key(user_id)
+    await matchmaking_queue.clear_waiting_message_key(user_id)
 
 
 class MatchMakingQueue:
@@ -220,7 +220,7 @@ class MatchMakingQueue:
 
         await self.persistence.flush()
 
-    async def _save_waiting_message(self, user_id: str, message_id: int):
+    async def save_waiting_message(self, user_id: str, message_id: int):
         """Persist the matchmaking waiting message id for a user."""
         app_chat_data = cast(dict, self.persistence.chat_data)
         if int(user_id) not in app_chat_data:
@@ -249,7 +249,7 @@ class MatchMakingQueue:
 
         await self.persistence.flush()
 
-    async def _clear_waiting_message_key(self, user_id: str):
+    async def clear_waiting_message_key(self, user_id: str):
         """Clear a stored waiting matchmaking message id without deleting the message."""
         app_chat_data = cast(dict, self.persistence.chat_data)
         user_data = app_chat_data.get(int(user_id), {})
