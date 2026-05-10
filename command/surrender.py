@@ -24,16 +24,19 @@ async def surrender(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return
 
-    caption = update.message.reply_to_message.caption
-    if not caption or not isinstance(caption, str):
-        log.warning("Message caption is not valid")
+    message_text = update.message.reply_to_message.caption
+    if not message_text or not isinstance(message_text, str):
+        message_text = update.message.reply_to_message.text
+
+    if not message_text or not isinstance(message_text, str):
+        log.warning("Message text is not valid")
         await context.bot.send_message(
             chat_id=update.effective_chat.id,
             text="Unable to find the match ID",
         )
         return
 
-    match_id = caption_get_match_id(caption=caption)
+    match_id = caption_get_match_id(message_text)
     game_data = db.get_match_data(match_id=match_id)
 
     if game_data is None:

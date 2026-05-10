@@ -369,17 +369,20 @@ async def check_player_turn(
     return True
 
 
-def caption_get_match_id(caption: str) -> str:
-    """Look for the match_id inside the chessboard message caption, and return match_id.
-    The match_id must be a number at the ending of the caption"""
-    cropped_caption = re.search(r"\d+$", caption)
-
-    if not cropped_caption:
-        log.error("Error on cropped caption")
+def caption_get_match_id(message_text: str | None) -> str:
+    """Extract the match_id from a board message caption or text.
+    The match_id must be a number at the ending of the text."""
+    if not message_text or not isinstance(message_text, str):
+        log.error("No message text available to extract match ID")
         return ""
 
-    match_id = cropped_caption.group()
-    return match_id
+    cropped_caption = re.search(r"\d+$", message_text.strip())
+
+    if not cropped_caption:
+        log.error("Error extracting match ID from message text")
+        return ""
+
+    return cropped_caption.group()
 
 
 def get_chessboard_keyboard(match_id: str, board: chess.Board) -> InlineKeyboardMarkup:
