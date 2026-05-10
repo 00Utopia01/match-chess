@@ -34,6 +34,7 @@ from command.surrender import surrender
 from src.callback import (
     handle_accept_match,
     handle_refuse_match,
+    handle_square_selection,
 )
 from src.env import ENV as env
 from src.logger import LOGGER as log
@@ -89,8 +90,6 @@ if __name__ == "__main__":
         partial(cancel_matchmaking, matchmaking_queue=matchmaking_queue),
         pattern=r"^usr:cancel_matchmaking$",
     )
-
-    application.add_handler(play_handler)
     application.add_handler(match_handler)
     application.add_handler(surrender_handler)
     application.add_handler(info_handler)
@@ -113,6 +112,10 @@ if __name__ == "__main__":
     application.add_handler(del_and_start_optout_query_handler)
     application.add_handler(del_and_start_register_query_handler)
     application.add_handler(cancel_matchmaking_handler)
+    square_selection_handler = CallbackQueryHandler(
+        handle_square_selection, pattern=r"^usr:select_square_(\w+)_(\w+)$"
+    )
+    application.add_handler(square_selection_handler)
 
     # Running >--------------------------------
     try:
