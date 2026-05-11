@@ -158,7 +158,8 @@ async def handle_square_selection(update: Update, context: ContextTypes.DEFAULT_
 
     match_id = context.match.group(1)
     square = context.match.group(2)
-    user_id = str(update.effective_user.id)
+    user_id = update.effective_user.id
+    user_id_str = str(user_id)
 
     match_data = db.get_match_data(match_id)
     if not match_data or match_data["time_stop"]:
@@ -166,12 +167,14 @@ async def handle_square_selection(update: Update, context: ContextTypes.DEFAULT_
         return
 
     from command.move import get_active_player_id
-    if get_active_player_id(match_data) != update.effective_user.id:
+    if get_active_player_id(match_data) != user_id:
         await query.answer("Not your turn")
         return
 
     app_chat_data = cast(dict, context.application.chat_data)
-    user_data = app_chat_data.get(int(user_id), {})
+    if user_id not in app_chat_data:
+        app_chat_data[user_id] = {}
+    user_data = app_chat_data[user_id]
 
     selected = user_data.get("selected_square")
 
@@ -191,11 +194,11 @@ async def handle_square_selection(update: Update, context: ContextTypes.DEFAULT_
         if outcome == MoveOutcome.SUCCESS:
             # Clear selected
             user_data.pop("selected_square", None)
-            await process_move(move_uci, match_data, user_id, query.message.message_id, context)
+            await process_move(move_uci, match_data, user_id_str, query.message.message_id, context)
         elif outcome in (MoveOutcome.CHECKMATE, MoveOutcome.STALEMATE):
             # Handle game over
             user_data.pop("selected_square", None)
-            await process_game_over(move_uci, match_data, user_id, query.message.message_id, context)
+            await process_game_over(move_uci, match_data, user_id_str, query.message.message_id, context)
         else:
             user_data.pop("selected_square", None)
             await query.answer("Invalid move")

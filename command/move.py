@@ -26,7 +26,8 @@ async def process_move(
     context: ContextTypes.DEFAULT_TYPE,
 ):
     """Process a move: update DB, delete old messages, send new chessboard messages with keyboard."""
-    white_id, black_id = match_data["white_user1"], match_data["black_user2"]
+    sender_id = str(sender_id)
+    white_id, black_id = str(match_data["white_user1"]), str(match_data["black_user2"])
     receiver_id = black_id if sender_id == white_id else white_id
 
     # Update database's chessboard with the new move
@@ -86,8 +87,9 @@ async def process_game_over(
     context: ContextTypes.DEFAULT_TYPE,
 ):
     """Process game over: update DB, delete old messages, send final chessboard messages."""
+    sender_id = str(sender_id)
     match_id = match_data["ID_Match"]
-    white_id, black_id = match_data["white_user1"], match_data["black_user2"]
+    white_id, black_id = str(match_data["white_user1"]), str(match_data["black_user2"])
 
     # Push final move to the board and save to database
     chessboard = chess.Board(fen=match_data["chessboard_fen"])
@@ -213,11 +215,11 @@ async def move_send_messages(
     ):
         return
 
-    white_id, black_id = match_data["white_user1"], match_data["black_user2"]
+    white_id, black_id = str(match_data["white_user1"]), str(match_data["black_user2"])
     chessboard = chess.Board(fen=match_data["chessboard_fen"])
 
     move_outcome = get_move_outcome(chessboard, move_uci)
-    sender_id = update.effective_user.id
+    sender_id = str(update.effective_user.id)
     receiver_id = black_id if sender_id == white_id else white_id
 
     match move_outcome:
