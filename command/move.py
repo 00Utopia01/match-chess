@@ -407,7 +407,7 @@ def get_chessboard_keyboard(match_id: str, board: chess.Board) -> InlineKeyboard
         for file in 'abcdefgh':
             square = file + str(rank + 1)
             piece = board.piece_at(chess.parse_square(square))
-            symbol = chess.UNICODE_PIECE_SYMBOLS[piece.symbol()] if piece else ' '
+            symbol = piece.symbol() if piece else ' '
             callback_data = f"usr:select_square_{match_id}_{square}"
             button = InlineKeyboardButton(symbol, callback_data=callback_data)
             row.append(button)
