@@ -9,7 +9,7 @@ from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Message, Update
 from telegram.error import BadRequest
 from telegram.ext import ContextTypes, PicklePersistence
 
-from command.move import get_chessboard_webp
+from command.move import get_chessboard_keyboard
 from src.db_manager import DB as db
 from src.env import ENV as env
 from src.logger import LOGGER as log
@@ -171,28 +171,27 @@ class MatchMakingQueue:
             return
 
         chessboard = chess.Board()
-        img = get_chessboard_webp(chessboard)
+        keyboard = get_chessboard_keyboard(match_id, chessboard)
 
-        msg_white = await self.bot.send_photo(
+        msg_white = await self.bot.send_message(
             chat_id=white_id,
-            photo=img,
-            caption=(
+            text=(
                 f"<b>Game Vs {black_user_data['fullname']}</b>\n"
                 "You found an opponent!\n\n"
                 f"<i>Match number: {match_id}</i>"
             ),
             parse_mode="HTML",
+            reply_markup=keyboard,
         )
-        img.seek(0)
-        msg_black = await self.bot.send_photo(
+        msg_black = await self.bot.send_message(
             chat_id=black_id,
-            photo=img,
-            caption=(
+            text=(
                 f"<b>Game Vs {white_user_data['fullname']}</b>\n"
                 "You found an opponent!\n\n"
                 f"<i>Match number: {match_id}</i>"
             ),
             parse_mode="HTML",
+            reply_markup=keyboard,
         )
 
         return msg_white, msg_black

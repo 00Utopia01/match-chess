@@ -2,12 +2,20 @@
 
 from typing import cast
 
+import chess
 from chess import Board
 from telegram import CallbackQuery, Update
 from telegram.ext import ContextTypes
 
 # from src.chess_logic import get_board
-from command.move import get_chessboard_webp
+from command.move import (
+    MoveOutcome,
+    get_active_player_id,
+    get_chessboard_keyboard,
+    get_move_outcome,
+    process_game_over,
+    process_move,
+)
 from src.db_manager import DB as db
 from src.logger import LOGGER as log
 
@@ -47,6 +55,7 @@ def _start_match(mode: int, p1_id: str, p2_id: str) -> str | None:
 async def handle_accept_match(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """handle method for commands.play.challenge_user InlineQueryButton,
     where the user accepts the match request"""
+    # pylint: disable=too-many-locals
     if not update.effective_user:
         return
 
@@ -84,31 +93,35 @@ async def handle_accept_match(update: Update, context: ContextTypes.DEFAULT_TYPE
         return
 
     board = Board(chessboard_fen)
-    img1 = get_chessboard_webp(chessboard=board)
+    keyboard = get_chessboard_keyboard(match_id, board)
 
     await query.delete_message()
 
-    msg_p1 = await context.bot.send_photo(
+    p1_color = "white" if mode == 1 else "black"
+    p2_color = "black" if mode == 1 else "white"
+
+    msg_p1 = await context.bot.send_message(
         chat_id=p1_id,
-        photo=img1,
-        caption=(
+        text=(
             f"<b>Game Vs {p2_name}</b>\n"
+            f"You play as <b>{p1_color}</b>\n"
             "Your challenge request has been accepted\n\n"
             f"<i>Match number: {match_id}</i>"
         ),
         parse_mode="HTML",
+        reply_markup=keyboard,
     )
 
-    img1.seek(0)
-    msg_p2 = await context.bot.send_photo(
+    msg_p2 = await context.bot.send_message(
         chat_id=p2_id,
-        photo=img1,
-        caption=(
+        text=(
             f"<b>Game Vs {p1_name}</b>\n"
-            "You have  accepted the challenge request\n\n"
+            f"You play as <b>{p2_color}</b>\n"
+            "You have accepted the challenge request\n\n"
             f"<i>Match number: {match_id}</i>"
         ),
         parse_mode="HTML",
+        reply_markup=keyboard,
     )
     # Save p1 and p2's message id in chat data
     app_chat_data = cast(dict, context.application.chat_data)
@@ -143,3 +156,99 @@ async def handle_refuse_match(update: Update, context: ContextTypes.DEFAULT_TYPE
         chat_id=p1_id,
         text=(f"Your challenge request has been refused by {p1_name}!"),
     )
+
+
+# The helper below is compact and needs multiple params; silence pylint for arg/locals.
+# pylint: disable=too-many-arguments,too-many-locals,too-many-positional-arguments
+async def _attempt_move(
+    selected: str,
+    square: str,
+    match_data: dict,
+    user_data: dict,
+    user_id_str: str,
+    query: CallbackQuery,
+    context: ContextTypes.DEFAULT_TYPE,
+):
+    """Attempt a move when a square was already selected."""
+    from_square = selected
+    to_square = square
+    board = Board(match_data["chessboard_fen"])
+    from_sq = chess.parse_square(from_square)
+    to_sq = chess.parse_square(to_square)
+    move = chess.Move(from_sq, to_sq)
+    piece = board.piece_at(move.from_square)
+    if piece and piece.piece_type == chess.PAWN:
+        white_pawn_last_rank = board.turn == chess.WHITE and (move.to_square // 8) == 7
+        black_pawn_last_rank = board.turn == chess.BLACK and (move.to_square // 8) == 0
+        if white_pawn_last_rank or black_pawn_last_rank:
+            move = chess.Move(move.from_square, move.to_square, promotion=chess.QUEEN)
+    move_uci = move.uci()
+
+    outcome = get_move_outcome(board, move_uci)
+    if outcome == MoveOutcome.SUCCESS:
+        user_data.pop("selected_square", None)
+        msg_id = query.message.message_id  # type: ignore[union-attr]
+        await process_move(move_uci, match_data, user_id_str, msg_id, context)
+    elif outcome in (MoveOutcome.CHECKMATE, MoveOutcome.STALEMATE):
+        user_data.pop("selected_square", None)
+        msg_id = query.message.message_id  # type: ignore[union-attr]
+        await process_game_over(move_uci, match_data, user_id_str, msg_id, context)
+    else:
+        user_data.pop("selected_square", None)
+        await query.answer("Invalid move")
+
+
+async def _select_square(
+    square: str, match_data: dict, user_data: dict, query: CallbackQuery
+):
+    """Select a square if it contains a piece of the correct color."""
+    board = Board(match_data["chessboard_fen"])
+    piece = board.piece_at(chess.parse_square(square))
+    if piece and piece.color == board.turn:
+        user_data["selected_square"] = square
+        await query.answer(f"Selected {square}")
+    else:
+        await query.answer("No piece to select")
+
+
+async def handle_square_selection(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Handle square selection for making moves via buttons."""
+    # pylint: disable=too-many-branches,too-many-locals
+    if not update.effective_user or not context.match:
+        return
+
+    query = update.callback_query
+    if not query or not query.message:
+        return
+
+    await query.answer()
+
+    match_id = context.match.group(1)
+    square = context.match.group(2)
+    user_id = update.effective_user.id
+    user_id_str = str(user_id)
+
+    match_data = db.get_match_data(match_id)
+    if not match_data or match_data["time_stop"]:
+        await query.answer("Match not found or ended")
+        return
+
+    if get_active_player_id(match_data) != user_id:
+        await query.answer("Not your turn")
+        return
+
+    app_chat_data = cast(dict, context.application.chat_data)
+    if user_id not in app_chat_data:
+        app_chat_data[user_id] = {}
+    user_data = app_chat_data[user_id]
+
+    selected = user_data.get("selected_square")
+
+    if selected:
+        # Attempt move
+        await _attempt_move(
+            selected, square, match_data, user_data, user_id_str, query, context
+        )
+    else:
+        # Select square if has piece
+        await _select_square(square, match_data, user_data, query)

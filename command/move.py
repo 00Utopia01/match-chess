@@ -10,12 +10,170 @@ import cairosvg  # type: ignore
 import chess
 import chess.svg
 from PIL import Image
-from telegram import Update
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.error import BadRequest
 from telegram.ext import ContextTypes
 
 from src.db_manager import DB as db
 from src.logger import LOGGER as log
+
+
+async def process_move(
+    move_uci: str,
+    match_data: dict,
+    sender_id: str,
+    sender_msg_id: int,
+    context: ContextTypes.DEFAULT_TYPE,
+):
+    """Process a move: update DB, delete old messages, send new chessboard messages
+    with keyboard."""
+    # pylint: disable=too-many-locals
+    sender_id = str(sender_id)
+    white_id, black_id = str(match_data["white_user1"]), str(match_data["black_user2"])
+    receiver_id = black_id if sender_id == white_id else white_id
+
+    # Update database's chessboard with the new move
+    chessboard = chess.Board(fen=match_data["chessboard_fen"])
+    match_id = match_data["ID_Match"]
+    chessboard.push(chess.Move.from_uci(move_uci))
+    db.add_move(match_id, move_uci)
+
+    keyboard = get_chessboard_keyboard(match_id, chessboard)
+
+    # Get user's fullname from the db
+    sender_user_data = db.get_user_data(sender_id)
+    receiver_user_data = db.get_user_data(receiver_id)
+
+    if not isinstance(sender_user_data, dict) or not isinstance(
+        receiver_user_data, dict
+    ):
+        log.error("Invalid user data")
+        return
+
+    # Delete old messages
+    app_chat_data = context.application.chat_data
+    try:
+        await context.bot.delete_message(chat_id=sender_id, message_id=sender_msg_id)
+    except BadRequest:
+        log.error("Failed to delete sender's message")
+
+    receiver_msg_id = app_chat_data.get(int(receiver_id), {}).get(f"msg_{match_id}")
+    if receiver_msg_id:
+        try:
+            await context.bot.delete_message(
+                chat_id=receiver_id, message_id=receiver_msg_id
+            )
+        except BadRequest:
+            log.error("Failed to delete receiver's message")
+
+    # Send new messages
+    sender_color = "white" if sender_id == white_id else "black"
+    receiver_color = "white" if receiver_id == white_id else "black"
+    sender_msg = await context.bot.send_message(
+        chat_id=sender_id,
+        text=(
+            f"<b>Game Vs {receiver_user_data['fullname']}</b>\n"
+            f"You play as <b>{sender_color}</b>\n"
+            f"Your move: {move_uci}\n\n"
+            f"<i>Match number: {match_id}</i>"
+        ),
+        parse_mode="HTML",
+        reply_markup=keyboard,
+    )
+    receiver_msg = await context.bot.send_message(
+        chat_id=receiver_id,
+        text=(
+            f"<b>Game Vs {sender_user_data['fullname']}</b>\n"
+            f"You play as <b>{receiver_color}</b>\n"
+            f"Opponent's move: {move_uci}\n\n"
+            f"<i>Match number: {match_id}</i>"
+        ),
+        parse_mode="HTML",
+        reply_markup=keyboard,
+    )
+
+    # Update chat_data
+    _update_chat_data(context, match_id, sender_id, sender_msg.message_id)
+    _update_chat_data(context, match_id, receiver_id, receiver_msg.message_id)
+
+
+async def process_game_over(
+    move_uci: str,
+    match_data: dict,
+    sender_id: str,
+    sender_msg_id: int,
+    context: ContextTypes.DEFAULT_TYPE,
+):
+    """Process game over: update DB, delete old messages, send final chessboard messages."""
+    # pylint: disable=too-many-locals
+    sender_id = str(sender_id)
+    match_id = match_data["ID_Match"]
+    white_id, black_id = str(match_data["white_user1"]), str(match_data["black_user2"])
+
+    # Push final move to the board and save to database
+    chessboard = chess.Board(fen=match_data["chessboard_fen"])
+    chessboard.push(chess.Move.from_uci(move_uci))
+    db.add_move(match_id, move_uci)
+    db.stop_match(match_id)
+
+    keyboard = get_chessboard_keyboard(match_id, chessboard)
+
+    # Get user's fullname from the db
+    white_user_data = db.get_user_data(str(white_id))
+    black_user_data = db.get_user_data(str(black_id))
+
+    if not white_user_data or not black_user_data:
+        log.error("Failed to fetch user_data")
+        return
+
+    if chessboard.is_stalemate():
+        text = MoveOutcome.STALEMATE.value
+    else:
+        winner = "Black" if chessboard.turn == chess.WHITE else "White"
+        text = f"{winner} player has won the match by checkmate!"
+
+    # Delete old messages
+    app_chat_data = context.application.chat_data
+    try:
+        await context.bot.delete_message(chat_id=sender_id, message_id=sender_msg_id)
+    except BadRequest:
+        log.error("Failed to delete sender's message")
+
+    other_id = black_id if sender_id == white_id else white_id
+    receiver_msg_id = app_chat_data.get(int(other_id), {}).get(f"msg_{match_id}")
+    if receiver_msg_id:
+        try:
+            await context.bot.delete_message(
+                chat_id=other_id, message_id=receiver_msg_id
+            )
+        except BadRequest:
+            log.error("Failed to delete receiver's message")
+
+    # Send final messages
+    await context.bot.send_message(
+        chat_id=white_id,
+        text=(
+            f"<b>Game Vs {black_user_data['fullname']}</b>\n"
+            f"You play as <b>white</b>\n"
+            f"Final move: {move_uci}\n\n"
+            f"{text}\n\n"
+            f"<i>Match number: {match_id}</i>"
+        ),
+        parse_mode="HTML",
+        reply_markup=keyboard,
+    )
+    await context.bot.send_message(
+        chat_id=black_id,
+        text=(
+            f"<b>Game Vs {white_user_data['fullname']}</b>\n"
+            f"You play as <b>black</b>\n"
+            f"Final move: {move_uci}\n\n"
+            f"{text}\n\n"
+            f"<i>Match number: {match_id}</i>"
+        ),
+        parse_mode="HTML",
+        reply_markup=keyboard,
+    )
 
 
 # pylint: disable=too-many-return-statements
@@ -37,9 +195,13 @@ async def move(update: Update, context: ContextTypes.DEFAULT_TYPE):
         log.error("Cannot execute /move without move_uci")
         return
 
-    caption = update.message.reply_to_message.caption
+    board_message = update.message.reply_to_message
+    caption = None
+    if board_message:
+        caption = board_message.caption or board_message.text
+
     if not caption or not isinstance(caption, str):
-        log.error("Message caption is not valid")
+        log.error("Message text is not valid")
         return
 
     match_id = caption_get_match_id(caption)
@@ -85,20 +247,28 @@ async def move_send_messages(
     ):
         return
 
-    white_id, black_id = match_data["white_user1"], match_data["black_user2"]
     chessboard = chess.Board(fen=match_data["chessboard_fen"])
 
     move_outcome = get_move_outcome(chessboard, move_uci)
-    sender_id = update.effective_user.id
-    receiver_id = black_id if sender_id == white_id else white_id
+    sender_id = str(update.effective_user.id)
 
     match move_outcome:
         case MoveOutcome.STALEMATE | MoveOutcome.CHECKMATE:
-            await _handle_game_over(match_data, chessboard, move_uci, update, context)
+            await process_game_over(
+                move_uci,
+                match_data,
+                sender_id,
+                update.message.reply_to_message.message_id,
+                context,
+            )
 
         case MoveOutcome.SUCCESS:
-            await _handle_successful_move(
-                move_uci, match_data, receiver_id, update=update, context=context
+            await process_move(
+                move_uci,
+                match_data,
+                sender_id,
+                update.message.reply_to_message.message_id,
+                context,
             )
 
         case (
@@ -109,73 +279,6 @@ async def move_send_messages(
             await context.bot.send_message(
                 chat_id=sender_id, text="Please input a valid move in uci format"
             )
-
-
-async def _handle_successful_move(
-    move_uci,
-    match_data,
-    receiver_id,
-    update: Update,
-    context: ContextTypes.DEFAULT_TYPE,
-):
-    """Save the move in the db, deletes old chessboard messages, and sends new ones"""
-    if (
-        not update.message
-        or not update.effective_user
-        or not update.message.reply_to_message
-    ):
-        return
-
-    # Update database's chessboard with the new move
-    sender_id = update.effective_user.id
-    chessboard = chess.Board(fen=match_data["chessboard_fen"])
-    match_id = match_data["ID_Match"]
-    chessboard.push(chess.Move.from_uci(move_uci))
-    db.add_move(match_id, move_uci)
-
-    img = get_chessboard_webp(chessboard)
-
-    # Get user's fullname from the db
-    sender_user_data = db.get_user_data(str(sender_id))
-    receiver_user_data = db.get_user_data(str(receiver_id))
-
-    if not isinstance(sender_user_data, dict) or not isinstance(
-        receiver_user_data, dict
-    ):
-        log.error(
-            "Invalid sender_user_data or receiver_user_data: %s, %s",
-            str(sender_id),
-            str(receiver_id),
-        )
-        return
-
-    # Delete old chessboard messages
-    await _delete_old_messages(
-        match_id, str(sender_id), str(receiver_id), update, context
-    )
-
-    # Send messages
-    sender_msg = await context.bot.send_photo(
-        chat_id=sender_id,
-        photo=img,
-        caption=f"<b>Game Vs {receiver_user_data["fullname"]}</b>\n"
-        f"Your move: {move_uci}\n\n"
-        f"<i>Match number: {match_id}</i>",
-        parse_mode="HTML",
-    )
-    img.seek(0)
-    receiver_msg = await context.bot.send_photo(
-        chat_id=receiver_id,
-        photo=img,
-        caption=f"<b>Game Vs {sender_user_data["fullname"]}</b>\n"
-        f"Opponent's move: {move_uci}\n\n"
-        f"<i>Match number: {match_id}</i>",
-        parse_mode="HTML",
-    )
-
-    # Update chat_data on both chats
-    _update_chat_data(context, match_id, sender_id, sender_msg.message_id)
-    _update_chat_data(context, match_id, receiver_id, receiver_msg.message_id)
 
 
 async def _delete_old_messages(
@@ -219,70 +322,6 @@ async def _delete_old_messages(
             return
 
 
-async def _handle_game_over(
-    match_data: dict,
-    chessboard: chess.Board,
-    move_uci: str,
-    update: Update,
-    context: ContextTypes.DEFAULT_TYPE,
-):
-    """Ends the database match and notifies players"""
-
-    match_id = match_data["ID_Match"]
-    white_id, black_id = match_data["white_user1"], match_data["black_user2"]
-
-    if update.effective_user is None:
-        log.error("No effective_user available in _handle_game_over")
-        return
-
-    sender_id = str(update.effective_user.id)
-    receiver_id = str(black_id) if sender_id == str(white_id) else str(white_id)
-
-    # Push final move to the board and save to database
-    chessboard.push(chess.Move.from_uci(move_uci))
-    db.add_move(match_id, move_uci)
-    db.stop_match(match_id)
-
-    # Delete previous board messages
-    await _delete_old_messages(match_id, sender_id, receiver_id, update, context)
-
-    img = get_chessboard_webp(chessboard)
-
-    white_user_data = db.get_user_data(str(white_id))
-    black_user_data = db.get_user_data(str(black_id))
-
-    if not white_user_data or not black_user_data:
-        log.error("Failed to fetch user_data")
-        return
-
-    if chessboard.is_stalemate():
-        text = MoveOutcome.STALEMATE.value
-    else:
-        winner = "Black" if chessboard.turn == chess.WHITE else "White"
-        text = f"{winner} player has won the match by checkmate!"
-
-    # Send messages
-    await context.bot.send_photo(
-        chat_id=white_id,
-        photo=img,
-        caption=f"<b>Game Vs {black_user_data['fullname']}</b>\n"
-        f"Final move: {move_uci}\n\n"
-        f"{text}\n\n"
-        f"<i>Match number: {match_id}</i>",
-        parse_mode="HTML",
-    )
-    img.seek(0)
-    await context.bot.send_photo(
-        chat_id=black_id,
-        photo=img,
-        caption=f"<b>Game Vs {white_user_data['fullname']}</b>\n"
-        f"Final move: {move_uci}\n\n"
-        f"{text}\n\n"
-        f"<i>Match number: {match_id}</i>",
-        parse_mode="HTML",
-    )
-
-
 def _update_chat_data(context, match_id, user_id, message_id):
     """Update chat_data of the specified user, add {"msg_match_id" : message_id}"""
     if int(user_id) not in context.application.chat_data:
@@ -290,15 +329,15 @@ def _update_chat_data(context, match_id, user_id, message_id):
     context.application.chat_data[int(user_id)][f"msg_{match_id}"] = message_id
 
 
-def get_active_player_id(match_data: dict) -> str:
-    """Get the user_id of the active user in the specified match"""
+def get_active_player_id(match_data: dict) -> int:
+    """Get the user_id of the active user in the specified match."""
     chessboard_fen = match_data["chessboard_fen"]
     active_player_id = (
         match_data["white_user1"]
         if is_white_turn(chessboard_fen)
         else match_data["black_user2"]
     )
-    return active_player_id
+    return int(active_player_id)
 
 
 def is_white_turn(chessboard_fen: str) -> bool:
@@ -362,17 +401,39 @@ async def check_player_turn(
     return True
 
 
-def caption_get_match_id(caption: str) -> str:
-    """Look for the match_id inside the chessboard message caption, and return match_id.
-    The match_id must be a number at the ending of the caption"""
-    cropped_caption = re.search(r"\d+$", caption)
-
-    if not cropped_caption:
-        log.error("Error on cropped caption")
+def caption_get_match_id(message_text: str | None) -> str:
+    """Extract the match_id from a board message caption or text.
+    The match_id must be a number at the ending of the text."""
+    if not message_text or not isinstance(message_text, str):
+        log.error("No message text available to extract match ID")
         return ""
 
-    match_id = cropped_caption.group()
-    return match_id
+    match_id_match = re.search(r"match number:\s*(\d+)", message_text, re.IGNORECASE)
+    if match_id_match:
+        return match_id_match.group(1)
+
+    cropped_caption = re.search(r"\d+$", message_text.strip())
+    if not cropped_caption:
+        log.error("Error extracting match ID from message text")
+        return ""
+
+    return cropped_caption.group()
+
+
+def get_chessboard_keyboard(match_id: str, board: chess.Board) -> InlineKeyboardMarkup:
+    """Generate an InlineKeyboardMarkup representing the chessboard with buttons for each square."""
+    keyboard = []
+    for rank in range(7, -1, -1):  # ranks 8 to 1 (top to bottom)
+        row = []
+        for file in "abcdefgh":
+            square = file + str(rank + 1)
+            piece = board.piece_at(chess.parse_square(square))
+            symbol = piece.symbol() if piece else " "
+            callback_data = f"usr:select_square_{match_id}_{square}"
+            button = InlineKeyboardButton(symbol, callback_data=callback_data)
+            row.append(button)
+        keyboard.append(row)
+    return InlineKeyboardMarkup(keyboard)
 
 
 def get_move_outcome(chessboard: chess.Board, move_uci: str):
