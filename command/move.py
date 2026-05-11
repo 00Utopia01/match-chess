@@ -167,9 +167,13 @@ async def move(update: Update, context: ContextTypes.DEFAULT_TYPE):
         log.error("Cannot execute /move without move_uci")
         return
 
-    caption = update.message.reply_to_message.caption
+    board_message = update.message.reply_to_message
+    caption = None
+    if board_message:
+        caption = board_message.caption or board_message.text
+
     if not caption or not isinstance(caption, str):
-        log.error("Message caption is not valid")
+        log.error("Message text is not valid")
         return
 
     match_id = caption_get_match_id(caption)
@@ -378,8 +382,11 @@ def caption_get_match_id(message_text: str | None) -> str:
         log.error("No message text available to extract match ID")
         return ""
 
-    cropped_caption = re.search(r"\d+$", message_text.strip())
+    match_id_match = re.search(r"match number:\s*(\d+)", message_text, re.IGNORECASE)
+    if match_id_match:
+        return match_id_match.group(1)
 
+    cropped_caption = re.search(r"\d+$", message_text.strip())
     if not cropped_caption:
         log.error("Error extracting match ID from message text")
         return ""
