@@ -61,15 +61,18 @@ async def process_move(
             log.error("Failed to delete receiver's message")
 
     # Send new messages
+    sender_color = "white" if sender_id == white_id else "black"
+    receiver_color = "white" if receiver_id == white_id else "black"
+    
     sender_msg = await context.bot.send_message(
         chat_id=sender_id,
-        text=f"<b>Game Vs {receiver_user_data['fullname']}</b>\nYour move: {move_uci}\n\n<i>Match number: {match_id}</i>",
+        text=f"<b>Game Vs {receiver_user_data['fullname']}</b>\nYou play as <b>{sender_color}</b>\nYour move: {move_uci}\n\n<i>Match number: {match_id}</i>",
         parse_mode="HTML",
         reply_markup=keyboard,
     )
     receiver_msg = await context.bot.send_message(
         chat_id=receiver_id,
-        text=f"<b>Game Vs {sender_user_data['fullname']}</b>\nOpponent's move: {move_uci}\n\n<i>Match number: {match_id}</i>",
+        text=f"<b>Game Vs {sender_user_data['fullname']}</b>\nYou play as <b>{receiver_color}</b>\nOpponent's move: {move_uci}\n\n<i>Match number: {match_id}</i>",
         parse_mode="HTML",
         reply_markup=keyboard,
     )
@@ -131,6 +134,7 @@ async def process_game_over(
     await context.bot.send_message(
         chat_id=white_id,
         text=f"<b>Game Vs {black_user_data['fullname']}</b>\n"
+        f"You play as <b>white</b>\n"
         f"Final move: {move_uci}\n\n"
         f"{text}\n\n"
         f"<i>Match number: {match_id}</i>",
@@ -140,6 +144,7 @@ async def process_game_over(
     await context.bot.send_message(
         chat_id=black_id,
         text=f"<b>Game Vs {white_user_data['fullname']}</b>\n"
+        f"You play as <b>black</b>\n"
         f"Final move: {move_uci}\n\n"
         f"{text}\n\n"
         f"<i>Match number: {match_id}</i>",

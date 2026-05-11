@@ -89,10 +89,14 @@ async def handle_accept_match(update: Update, context: ContextTypes.DEFAULT_TYPE
 
     await query.delete_message()
 
+    p1_color = "white" if mode == 1 else "black"
+    p2_color = "black" if mode == 1 else "white"
+
     msg_p1 = await context.bot.send_message(
         chat_id=p1_id,
         text=(
             f"<b>Game Vs {p2_name}</b>\n"
+            f"You play as <b>{p1_color}</b>\n"
             "Your challenge request has been accepted\n\n"
             f"<i>Match number: {match_id}</i>"
         ),
@@ -104,6 +108,7 @@ async def handle_accept_match(update: Update, context: ContextTypes.DEFAULT_TYPE
         chat_id=p2_id,
         text=(
             f"<b>Game Vs {p1_name}</b>\n"
+            f"You play as <b>{p2_color}</b>\n"
             "You have accepted the challenge request\n\n"
             f"<i>Match number: {match_id}</i>"
         ),
