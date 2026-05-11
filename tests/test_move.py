@@ -57,5 +57,8 @@ def test_get_move_outcome(test_move):
 
 
 def test_caption_get_match_id_from_text():
-    message_text = "<b>Game Vs Opponent</b>\nYour move: e2e4\n\n<i>Match number: 12345</i>"
+    """Ensure caption-based match id extraction works from HTML text."""
+    message_text = (
+        "<b>Game Vs Opponent</b>\nYour move: e2e4\n\n<i>Match number: 12345</i>"
+    )
     assert move.caption_get_match_id(message_text) == "12345"
